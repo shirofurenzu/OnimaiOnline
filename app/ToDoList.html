@@ -2,943 +2,938 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>待辦清單</title>
-    <link rel="icon" href="../images/brother.png" type="image/png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>待辦清單 Pro v10</title>
     <style>
-        /* --- CSS 樣式開始 --- */
-        /* 定義 CSS 變數用於主題切換 */
+        /* --- 全域變數 --- */
         :root {
-            --bg-color: linear-gradient(135deg, #f0f2f5 0%, #e0e5ec 100%);
-            --text-color: #333;
-            --container-bg: #ffffff;
-            --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            --header-color: #4CAF50;
-            --header-icon-color: #388E3C;
-            --input-border-color: #ddd;
-            --primary-btn-bg: #4CAF50;
-            --primary-btn-hover-bg: #388E3C;
-            --io-btn-bg: #607D8B;
-            --io-btn-hover-bg: #455A64;
-            --filter-btn-bg: #f0f0f0;
-            --filter-btn-text: #555;
-            --filter-btn-border: #ddd;
-            --task-item-bg: #f9f9f9;
-            --task-item-border: #eee;
-            --task-item-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            --task-completed-text: #888;
-            --task-meta-text: #777;
-            --edit-bg: #eef;
-            --edit-border: #ccc;
-            --action-btn-text: #555;
-            --action-btn-border: #ccc;
-            --action-btn-hover-bg: #4CAF50;
-            --action-btn-hover-text: white;
-            --delete-btn-hover-bg: #E53935;
-            --no-task-text: #777;
-            --priority-high: #F44336;
-            --priority-medium: #FFC107;
-            --priority-low: #2196F3;
+            --bg-color: #f0f2f5;
+            --sidebar-bg: #ffffff;
+            --main-bg: #ffffff;
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --primary-color: #0984e3;
+            --accent-color: #6c5ce7;
+            --danger-color: #ff7675;
+            --success-color: #00b894;
+            --warning-color: #f39c12;
+            --border-color: #dfe6e9;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --input-bg: #f5f6fa;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --toast-bg: #2d3436;
+
+            /* 任務底色 (淺色模式) - 預設改為淺灰 */
+            --task-bg-default: #f5f5f5; 
+            --task-bg-red: #ffe5e5;   /* 逾期紅 */
+            --task-bg-orange: #fff5cc; /* 當日橘 */
+            --task-bg-green: #e8f5e9;
+            --task-bg-blue: #e3f2fd;
+            --task-bg-purple: #f3e5f5;
+            --task-bg-gray: #e0e0e0; /* 手動選的灰要再深一點 */
         }
 
-        /* 暗黑模式樣式 */
         body.dark-mode {
-            --bg-color: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            --text-color: #ecf0f1;
-            --container-bg: #3b4d60;
-            --container-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            --header-color: #66BB6A;
-            --header-icon-color: #4CAF50;
-            --input-border-color: #5d6d7e;
-            --primary-btn-bg: #66BB6A;
-            --primary-btn-hover-bg: #4CAF50;
-            --io-btn-bg: #7f8c8d;
-            --io-btn-hover-bg: #95a5a6;
-            --filter-btn-bg: #5d6d7e;
-            --filter-btn-text: #ecf0f1;
-            --filter-btn-border: #7f8c8d;
-            --task-item-bg: #4a5d70;
-            --task-item-border: #5d6d7e;
-            --task-item-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-            --task-completed-text: #aeb6bf;
-            --task-meta-text: #bdc3c7;
-            --edit-bg: #6c7e8e;
-            --edit-border: #7f8c8d;
-            --action-btn-text: #bdc3c7;
-            --action-btn-border: #7f8c8d;
-            --action-btn-hover-bg: #66BB6A;
-            --action-btn-hover-text: white;
-            --delete-btn-hover-bg: #ef5350;
-            --no-task-text: #bdc3c7;
-            /* 優先級顏色不變，保持視覺區分 */
+            --bg-color: #121212;
+            --sidebar-bg: #1e1e1e;
+            --main-bg: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #aaaaaa;
+            --primary-color: #90caf9;
+            --border-color: #333333;
+            --input-bg: #2c2c2c;
+            --shadow: 0 4px 6px rgba(0,0,0,0.5);
+            --modal-overlay: rgba(0,0,0,0.8);
+            --toast-bg: #ffffff;
+
+            /* 任務底色 (深色模式) */
+            --task-bg-default: #2a2a2a; /* 比背景稍亮 */
+            --task-bg-red: #3e2020;
+            --task-bg-orange: #3e3015;
+            --task-bg-green: #1b3320;
+            --task-bg-blue: #1a2f3d;
+            --task-bg-purple: #2f1d33;
+            --task-bg-gray: #444444;
         }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif; }
 
         body {
-            font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif;
-            background: var(--bg-color);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            height: 100dvh; 
             display: flex;
             justify-content: center;
-            align-items: flex-start;
-            min-height: 100vh;
-            margin: 0;
-            padding: 40px 20px;
-            color: var(--text-color);
-            box-sizing: border-box;
-            transition: background 0.3s ease, color 0.3s ease; /* 平滑過渡 */
+            padding: 15px;
+            overflow: hidden;
+            transition: background 0.3s;
         }
 
-        .container {
-            background-color: var(--container-bg);
-            padding: 35px 45px;
-            border-radius: 15px;
-            box-shadow: var(--container-shadow);
+        .app-container {
             width: 100%;
-            max-width: 700px;
-            box-sizing: border-box;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        h1 {
-            text-align: center;
-            color: var(--header-color);
-            margin-bottom: 30px;
-            font-size: 2.5em;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: color 0.3s ease;
-        }
-
-        h1::before {
-            content: "📝";
-            margin-right: 5px;
-            font-size: 0.8em;
-        }
-
-        /* --- 輸入區域 --- */
-        .input-area {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-        }
-
-        .input-area input[type="text"],
-        .input-area input[type="date"],
-        .input-area select {
-            flex: 1;
-            padding: 12px 15px;
-            border: 1px solid var(--input-border-color);
-            border-radius: 8px;
-            font-size: 1em;
-            min-width: 120px;
-            box-sizing: border-box;
-            background-color: var(--container-bg); /* 跟隨容器背景 */
-            color: var(--text-color);
-            transition: border-color 0.3s ease, background-color 0.3s ease, color 0.3s ease;
-        }
-
-        .input-area button {
-            background-color: var(--primary-btn-bg);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .input-area button:hover {
-            background-color: var(--primary-btn-hover-bg);
-            transform: translateY(-2px);
-        }
-
-        .input-area button:active {
-            transform: translateY(0);
-        }
-
-        /* --- 匯出入及主題切換按鈕區塊 --- */
-        .io-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-        }
-
-        .io-buttons button {
-            background-color: var(--io-btn-bg);
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.95em;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
-
-        .io-buttons button:hover {
-            background-color: var(--io-btn-hover-bg);
-            transform: translateY(-2px);
-        }
-        .io-buttons button:active {
-            transform: translateY(0);
-        }
-
-        .io-buttons input[type="file"] {
-            display: none;
-        }
-
-
-        /* --- 篩選按鈕 --- */
-        .filters {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 25px;
-            flex-wrap: wrap;
-        }
-
-        .filter-btn {
-            background-color: var(--filter-btn-bg);
-            color: var(--filter-btn-text);
-            border: 1px solid var(--filter-btn-border);
-            padding: 10px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.95em;
-            transition: all 0.3s ease;
-        }
-
-        .filter-btn:hover {
-            background-color: var(--filter-btn-border);
-            color: var(--text-color);
-        }
-
-        .filter-btn.active {
-            background-color: var(--primary-btn-bg);
-            color: white;
-            border-color: var(--primary-btn-bg);
-            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2);
-        }
-
-        /* --- 任務列表 --- */
-        #taskList {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .task-item {
-            background-color: var(--task-item-bg);
-            border: 1px solid var(--task-item-border);
-            border-radius: 10px;
-            margin-bottom: 12px;
-            padding: 15px 20px;
-            display: flex;
-            align-items: flex-start; /* 讓內容靠上對齊，因為有備註 */
-            gap: 15px;
-            box-shadow: var(--task-item-shadow);
-            transition: all 0.3s ease;
-            cursor: grab;
-            position: relative;
-            flex-wrap: wrap; /* 應對小螢幕 */
-        }
-
-        .task-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .task-item.dragging {
-            opacity: 0.5;
-            background-color: var(--primary-btn-bg); /* 拖曳時突出顏色 */
-            border-color: var(--primary-btn-hover-bg);
-        }
-
-        .task-item input[type="checkbox"] {
-            min-width: 20px;
-            min-height: 20px;
-            accent-color: var(--primary-btn-bg);
-            cursor: pointer;
-            margin-top: 2px; /* 與文字對齊 */
-        }
-
-        .task-content {
-            flex-grow: 1;
-            font-size: 1.1em;
-            color: var(--text-color);
+            max-width: 1400px;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            min-width: 0; /* 允許內容收縮 */
         }
 
-        .task-text {
-            word-break: break-word;
-            padding: 2px 0;
-        }
+        header { margin-bottom: 10px; flex-shrink: 0; text-align: center; }
+        h2 { color: var(--primary-color); font-weight: 800; font-size: 1.5rem; }
+        
+        #fileStatus { font-size: 12px; color: var(--text-secondary); margin-top: 5px; height: 18px; }
+        #fileStatus.saved { color: var(--success-color); }
+        #fileStatus.unsaved { color: var(--danger-color); font-weight: bold; }
 
-        .task-item.completed .task-text {
-            text-decoration: line-through;
-            color: var(--task-completed-text);
-        }
-
-        .task-meta {
-            font-size: 0.85em;
-            color: var(--task-meta-text);
-            margin-top: 5px;
+        .layout-grid {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            flex: 1;
+            gap: 15px;
+            overflow: hidden;
+            min-height: 0;
         }
 
-        .task-meta .due-date::before {
-            content: "📅 ";
-            color: #E65100;
+        /* --- 左側控制面板 --- */
+        .control-panel {
+            background: var(--sidebar-bg);
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            flex-shrink: 0;
+            max-height: 40%;
+            overflow-y: auto;
         }
 
-        /* 任務備註樣式 */
-        .task-notes-wrapper {
-            width: 100%; /* 佔滿整行 */
-            margin-top: 8px;
-            border-top: 1px dashed var(--input-border-color);
-            padding-top: 8px;
-        }
+        .panel-section { margin-bottom: 15px; }
+        .panel-title { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: bold; text-transform: uppercase; }
 
-        .task-notes-toggle {
-            font-size: 0.9em;
-            color: var(--primary-btn-bg);
-            cursor: pointer;
-            display: inline-block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            transition: color 0.2s ease;
-        }
-
-        .task-notes-toggle:hover {
-            color: var(--primary-btn-hover-bg);
-        }
-
-        .task-notes {
-            font-size: 0.9em;
-            color: var(--task-meta-text);
-            background-color: var(--edit-bg);
-            border: 1px solid var(--edit-border);
-            padding: 8px;
-            border-radius: 5px;
-            white-space: pre-wrap; /* 保留換行符和空格 */
-            word-break: break-word;
-            min-height: 30px;
-            line-height: 1.4;
-            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-        }
-
-        .task-notes[contenteditable="true"] {
-            outline: 2px solid var(--primary-btn-bg);
-            border-color: var(--primary-btn-hover-bg);
-        }
-
-        /* 優先級標籤樣式 */
-        .priority-tag {
-            position: absolute;
-            top: -8px;
-            right: 15px;
-            font-size: 0.75em;
-            padding: 3px 8px;
-            border-radius: 5px;
-            color: white;
-            font-weight: bold;
-            text-transform: uppercase;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .priority-tag.high { background-color: var(--priority-high); }
-        .priority-tag.medium { background-color: var(--priority-medium); }
-        .priority-tag.low { background-color: var(--priority-low); }
-
-        .task-actions {
-            display: flex;
-            gap: 8px;
-            margin-left: auto; /* 將按鈕推到最右邊 */
-        }
-
-        .task-actions button {
-            background: none;
-            border: 1px solid var(--action-btn-border);
-            font-size: 0.9em;
-            cursor: pointer;
-            color: var(--action-btn-text);
-            transition: color 0.2s ease, transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-            padding: 5px 10px;
-            border-radius: 5px;
-            white-space: nowrap;
-        }
-
-        .task-actions button:hover {
-            color: var(--action-btn-hover-text);
-            background-color: var(--action-btn-hover-bg);
-            border-color: var(--action-btn-hover-bg);
-            transform: scale(1.05);
-        }
-
-        .task-actions button.delete-btn:hover {
-            background-color: var(--delete-btn-hover-bg);
-            border-color: var(--delete-btn-hover-bg);
-        }
-
-        /* 編輯模式 */
-        .task-item.editing .task-text {
-            background-color: var(--edit-bg);
-            border: 1px solid var(--edit-border);
-            padding: 5px 8px;
-            border-radius: 5px;
+        input, select, textarea {
+            padding: 10px;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            border-radius: 8px;
+            font-size: 14px;
+            color: var(--text-primary);
             outline: none;
+            width: 100%;
+            transition: 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary-color); }
+
+        .input-stack { display: flex; flex-direction: column; gap: 8px; }
+        .input-row { display: flex; gap: 8px; }
+
+        .btn {
+            border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
+            display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 14px;
+        }
+        .btn-primary { background: var(--primary-color); color: white; width: 100%; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        
+        .btn-file { background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-primary); }
+        .btn-file:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .btn-save-file { background: var(--success-color); color: white; }
+        .btn-save-file:hover { filter: brightness(1.1); }
+        
+        .btn-tool { background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 12px; padding: 6px; }
+        .btn-tool:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-card { background: var(--input-bg); padding: 8px; border-radius: 6px; text-align: center; }
+        .stat-num { font-size: 16px; font-weight: bold; color: var(--primary-color); display: block; }
+        .stat-label { font-size: 10px; color: var(--text-secondary); }
+
+        /* --- 右側清單區域 --- */
+        .list-panel {
+            background: var(--main-bg);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
         }
 
-        .no-task-message {
-            text-align: center;
-            color: var(--no-task-text);
-            padding: 20px;
-            font-style: italic;
-            font-size: 1.1em;
+        .list-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0;
+            background: var(--main-bg);
+            z-index: 10;
         }
 
-        /* 響應式設計 */
-        @media (max-width: 768px) {
-            .container {
-                padding: 25px 25px;
-            }
-
-            h1 {
-                font-size: 2em;
-            }
-
-            .input-area, .io-buttons {
-                flex-direction: column;
-            }
-
-            .input-area input[type="text"],
-            .input-area input[type="date"],
-            .input-area select,
-            .input-area button,
-            .io-buttons button {
-                width: 100%;
-                margin-bottom: 8px;
-            }
-
-            .filters {
-                flex-direction: column;
-                align-items: center;
-            }
-
-            .filter-btn {
-                width: 80%;
-                margin-bottom: 8px;
-            }
-
-            .task-item {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 15px;
-                gap: 10px;
-            }
-
-            .task-actions {
-                width: 100%;
-                justify-content: flex-end;
-            }
-
-            .task-content {
-                width: 100%;
-            }
-
-            .task-meta {
-                width: 100%;
-                justify-content: flex-start;
-            }
-
-            .priority-tag {
-                top: 10px;
-                right: 10px;
-            }
+        .filter-row { display: flex; justify-content: space-between; align-items: center; }
+        .filter-tabs { display: flex; gap: 5px; }
+        .tab-btn {
+            background: none; border: none; font-size: 14px; font-weight: bold; color: var(--text-secondary);
+            cursor: pointer; padding: 4px 10px; border-radius: 20px; transition: 0.3s;
         }
-        /* --- CSS 樣式結束 --- */
+        .tab-btn.active { background: var(--input-bg); color: var(--primary-color); }
+
+        .search-box { position: relative; width: 100%; }
+        .search-box input { padding-left: 32px; border-radius: 20px; padding-top: 8px; padding-bottom: 8px;}
+        .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 14px; }
+
+        ul#taskList {
+            list-style: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 0 15px;
+            padding-bottom: calc(80px + env(safe-area-inset-bottom));
+        }
+
+        /* 任務卡片底色樣式 */
+        .task-item {
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 10px;
+            border: 1px solid transparent;
+            cursor: grab;
+            position: relative;
+            background-color: var(--task-bg-default); /* 使用灰色 */
+            transition: background-color 0.3s, box-shadow 0.2s;
+        }
+        
+        /* 顏色類別 */
+        .task-item.bg-red { background-color: var(--task-bg-red); border-left: 4px solid #ff5252; }
+        .task-item.bg-orange { background-color: var(--task-bg-orange); border-left: 4px solid #ffb74d; }
+        .task-item.bg-green { background-color: var(--task-bg-green); }
+        .task-item.bg-blue { background-color: var(--task-bg-blue); }
+        .task-item.bg-purple { background-color: var(--task-bg-purple); }
+        .task-item.bg-gray { background-color: var(--task-bg-gray); }
+
+        .task-item:active { cursor: grabbing; }
+        .task-item.dragging { opacity: 0.4; border: 2px dashed var(--primary-color); }
+
+        .task-header { display: flex; align-items: flex-start; gap: 10px; }
+        
+        .checkbox {
+            width: 22px; height: 22px; border: 2px solid var(--text-secondary); border-radius: 6px;
+            cursor: pointer; display: grid; place-items: center; flex-shrink: 0; margin-top: 2px;
+            background: rgba(255,255,255,0.8); /* 背景加深一點，因為卡片變灰了 */
+        }
+        .task-item.completed .checkbox { background: var(--success-color); border-color: var(--success-color); }
+        .task-item.completed .checkbox::after { content: '✓'; color: white; font-weight: bold; font-size: 14px; }
+        .task-item.completed .task-title { text-decoration: line-through; opacity: 0.6; }
+
+        .task-content { flex: 1; min-width: 0; }
+        .task-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; line-height: 1.4; word-break: break-all; }
+        
+        .task-meta { font-size: 11px; color: var(--text-secondary); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+        
+        .tag { padding: 2px 5px; border-radius: 4px; font-weight: bold; color: white; font-size: 10px; }
+        .tag.high { background: var(--danger-color); }
+        .tag.mid { background: var(--warning-color); }
+        .tag.low { background: var(--success-color); }
+        .cat-tag { padding: 2px 5px; border-radius: 4px; font-size: 10px; background: rgba(0,0,0,0.1); color: var(--text-primary); }
+
+        .task-date.overdue { color: var(--danger-color); font-weight: bold; }
+        .task-date.today { color: #e67e22; font-weight: bold; }
+        .has-notes { color: var(--accent-color); font-size: 12px; display: inline-flex; align-items: center; gap: 2px; }
+
+        .task-actions { display: flex; gap: 2px; flex-shrink: 0; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; padding: 6px; opacity: 0.5; transition: 0.2s; color: var(--text-secondary); }
+        .btn-icon:hover { opacity: 1; transform: scale(1.1); color: var(--primary-color); }
+        .btn-del:hover { color: var(--danger-color); }
+
+        .btn-collapse {
+            font-size: 11px; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.05); 
+            cursor: pointer; margin-left: auto; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .btn-collapse:hover { background: rgba(0,0,0,0.1); }
+        .btn-collapse.collapsed .arrow { transform: rotate(-90deg); }
+        .arrow { transition: transform 0.2s; display: inline-block; }
+
+        .subtasks-wrapper {
+            margin-top: 8px; padding-left: 32px; overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            max-height: 2000px; opacity: 1;
+        }
+        .subtasks-wrapper.hidden { max-height: 0; opacity: 0; margin-top: 0; }
+
+        .task-note-view {
+            font-size: 13px; color: var(--text-secondary); background: rgba(255,255,255,0.4);
+            padding: 8px 12px; border-radius: 6px; margin-bottom: 8px;
+            white-space: pre-wrap; border-left: 3px solid var(--accent-color); line-height: 1.5;
+        }
+        .task-note-view a { color: var(--primary-color); text-decoration: underline; }
+
+        .progress-container { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .progress-bar-bg { flex: 1; height: 5px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.3s; }
+        .progress-text { font-size: 10px; color: var(--text-secondary); }
+
+        .subtask-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; cursor: pointer;}
+        .sub-check { width: 14px; height: 14px; border: 1px solid var(--text-secondary); border-radius: 3px; display: grid; place-items: center; }
+        .subtask-row.done .sub-check { background: var(--success-color); border-color: var(--success-color); }
+        .subtask-row.done span { text-decoration: line-through; opacity: 0.7; }
+
+        #toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: var(--toast-bg); color: var(--bg-color);
+            padding: 10px 20px; border-radius: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            display: flex; align-items: center; gap: 15px;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000; font-weight: bold; font-size: 14px; white-space: nowrap;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        #undoBtn { background: none; border: none; color: var(--accent-color); font-weight: bold; cursor: pointer; text-transform: uppercase; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--modal-overlay); display: none; justify-content: center; align-items: center; z-index: 1000;
+            backdrop-filter: blur(3px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--sidebar-bg); width: 95%; max-width: 500px; max-height: 85vh;
+            border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); display: flex; flex-direction: column;
+        }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .modal-title { font-weight: bold; font-size: 18px; }
+        .modal-body { overflow-y: auto; flex: 1; padding-right: 5px; }
+        
+        .color-picker { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .color-option {
+            width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+            border: 2px solid transparent; transition: transform 0.2s;
+        }
+        .color-option:hover { transform: scale(1.1); }
+        .color-option.selected { border-color: var(--text-primary); transform: scale(1.1); box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        
+        .co-default { background: linear-gradient(135deg, #f5f5f5 50%, #e0e0e0 50%); border: 1px solid #ccc; }
+        .co-red { background: #ffcdd2; }
+        .co-orange { background: #ffe0b2; }
+        .co-green { background: #c8e6c9; }
+        .co-blue { background: #bbdefb; }
+        .co-purple { background: #e1bee7; }
+        .co-gray { background: #cfcfcf; }
+
+        .subtask-edit-list { list-style: none; margin-top: 10px; }
+        .subtask-edit-item { 
+            display: flex; gap: 10px; margin-bottom: 12px; align-items: center; 
+            background: var(--input-bg); padding: 8px; border-radius: 8px;
+            border: 1px solid transparent;
+        }
+        .subtask-edit-item.dragging { opacity: 0.5; border: 1px dashed var(--primary-color); }
+        .drag-handle { cursor: grab; color: var(--text-secondary); font-size: 18px; padding: 0 5px; }
+        .subtask-input { 
+            flex: 1; min-width: 0; padding: 8px; font-size: 15px; border: none; 
+            background: transparent; border-bottom: 1px solid var(--border-color); border-radius: 0;
+        }
+        .subtask-input:focus { border-bottom-color: var(--primary-color); }
+        .btn-sub-del { color: var(--danger-color); font-size: 20px; cursor: pointer; border: none; background: none; padding: 0 5px; }
+
+        .modal-footer { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+        .btn-cancel { background: #eee; color: #555; }
+        .btn-save { background: var(--primary-color); color: white; }
+
+        textarea { resize: vertical; min-height: 80px; }
+
+        @media (min-width: 768px) {
+            body { padding: 20px; }
+            .app-container { max-width: 1400px; }
+            .layout-grid { 
+                display: grid; 
+                grid-template-columns: 320px 1fr; 
+                gap: 20px;
+                overflow: hidden; 
+                height: 100%; 
+                padding-bottom: 20px; 
+            }
+            .control-panel { max-height: 100%; margin-bottom: 0; }
+            .list-panel { height: 100%; margin-top: 0; }
+            ul#taskList { padding: 0 20px 20px 20px; padding-bottom: 20px; }
+            .task-actions { gap: 5px; }
+            .list-header { padding: 15px; }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>待辦清單</h1>
 
-        <div class="input-area">
-            <input type="text" id="taskInput" placeholder="新增任務...">
-            <input type="date" id="dueDateInput">
-            <select id="prioritySelect">
-                <option value="low">低優先級</option>
-                <option value="medium" selected>中優先級</option>
-                <option value="high">高優先級</option>
-            </select>
-            <button id="addTaskBtn">新增任務</button>
-        </div>
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">所有任務</button>
-            <button class="filter-btn" data-filter="pending">進行中</button>
-            <button class="filter-btn" data-filter="completed">已完成</button>
-        </div>
+<div class="app-container">
+    <header>
+        <h2>✨ 待辦清單 Pro v10</h2>
+        <div id="fileStatus">尚未開啟檔案 (使用本機快取)</div>
+    </header>
 
-        <ul id="taskList">
+    <div class="layout-grid">
+        <!-- 左側面板 -->
+        <aside class="control-panel">
+            <div class="panel-section">
+                <div class="panel-title">檔案管理</div>
+                <div class="input-stack">
+                    <button class="btn btn-file" onclick="openLocalFile()">📂 開啟舊檔 (todo.json)</button>
+                    <button class="btn btn-save-file" onclick="saveToLocalFile()">💾 儲存變更 (Ctrl+S)</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">快速新增</div>
+                <div class="input-stack">
+                    <input type="text" id="newInput" placeholder="輸入任務名稱 (Enter)...">
+                    <div class="input-row">
+                        <select id="newCategory">
+                            <option value="Work">💼 工作</option>
+                            <option value="Personal">🏠 個人</option>
+                            <option value="Study">📚 學習</option>
+                            <option value="Other">📦 其他</option>
+                        </select>
+                        <select id="newPriority">
+                            <option value="high">高</option>
+                            <option value="mid" selected>中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                    <input type="date" id="newDate">
+                    <button class="btn btn-primary" onclick="addNewTask()">＋ 新增任務</button>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <div class="panel-title">進度總覽</div>
+                <div class="stats-grid">
+                    <div class="stat-card"><span class="stat-num" id="statTotal">0</span><span class="stat-label">總數</span></div>
+                    <div class="stat-card"><span class="stat-num" id="statDone" style="color:var(--success-color)">0</span><span class="stat-label">已完成</span></div>
+                </div>
+            </div>
+
+            <div class="panel-section" style="margin-bottom:0;">
+                <div class="panel-title">設定</div>
+                <div class="input-stack">
+                    <button class="btn btn-tool" onclick="exportData()">📤 另存新檔 (匯出)</button>
+                    <button class="btn btn-tool" onclick="toggleTheme()">🌗 切換模式</button>
+                    <a href="../index.html" class="btn btn-tool" style="text-decoration:none; display:flex; align-items:center; justify-content:center;">🏠 回首頁</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右側清單 -->
+        <main class="list-panel">
+            <div class="list-header">
+                <div class="filter-row">
+                    <div class="filter-tabs">
+                        <button class="tab-btn" onclick="setFilter('all', this)">全部</button>
+                        <button class="tab-btn active" onclick="setFilter('active', this)">進行中</button>
+                        <button class="tab-btn" onclick="setFilter('completed', this)">已完成</button>
+                    </div>
+                </div>
+                <div class="search-box" style="margin-top:10px;">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="搜尋任務..." oninput="render()">
+                </div>
+            </div>
+            
+            <ul id="taskList">
+                <!-- JS 生成 -->
             </ul>
+        </main>
+    </div>
+</div>
 
-        <div class="io-buttons">
-            <button id="exportBtn">匯出資料</button>
-            <input type="file" id="importFile" accept=".json">
-            <button id="importBtn">匯入資料</button>
-            <button id="darkModeToggle">切換主題</button>
-            <button class="home-button"><a href="../index.html" style="color: white; text-decoration: none;">回首頁</a></button>
+<!-- 撤銷通知 -->
+<div id="toast">
+    <span id="toastMsg">已刪除任務</span>
+    <button id="undoBtn" onclick="undoDelete()">復原</button>
+</div>
+
+<!-- 編輯視窗 -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div class="modal-title">編輯任務</div>
+            <button onclick="closeModal()" style="border:none;background:none;font-size:24px;cursor:pointer;color:var(--text-secondary)">×</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editId">
+            <div class="panel-title">基本資訊</div>
+            <input type="text" id="editTitle" style="margin-bottom:10px; font-weight:bold;">
+            <div class="input-row" style="margin-bottom:10px;">
+                <select id="editCategory">
+                    <option value="Work">💼 工作</option>
+                    <option value="Personal">🏠 個人</option>
+                    <option value="Study">📚 學習</option>
+                    <option value="Other">📦 其他</option>
+                </select>
+                <select id="editPriority">
+                    <option value="high">高</option>
+                    <option value="mid">中</option>
+                    <option value="low">低</option>
+                </select>
+                <input type="date" id="editDate">
+            </div>
+
+            <!-- 底色選擇 (增加說明) -->
+            <div class="panel-title">卡片底色 (選第一顆為自動判斷)</div>
+            <div class="color-picker" id="colorPicker">
+                <div class="color-option co-default" title="自動 (逾期變紅/當日變橘)" data-color="default" onclick="selectColor('default')"></div>
+                <div class="color-option co-red" data-color="bg-red" onclick="selectColor('bg-red')"></div>
+                <div class="color-option co-orange" data-color="bg-orange" onclick="selectColor('bg-orange')"></div>
+                <div class="color-option co-green" data-color="bg-green" onclick="selectColor('bg-green')"></div>
+                <div class="color-option co-blue" data-color="bg-blue" onclick="selectColor('bg-blue')"></div>
+                <div class="color-option co-purple" data-color="bg-purple" onclick="selectColor('bg-purple')"></div>
+                <div class="color-option co-gray" data-color="bg-gray" onclick="selectColor('bg-gray')"></div>
+            </div>
+            <input type="hidden" id="editColor">
+
+            <div class="panel-title">詳細備註</div>
+            <textarea id="editNotes" placeholder="輸入詳細說明、網址或筆記..." style="margin-bottom:15px;"></textarea>
+
+            <div class="panel-title">子任務清單 (可拖曳)</div>
+            <ul class="subtask-edit-list" id="editSubtaskList"></ul>
+            <button class="btn btn-tool" style="width:100%; margin-top:10px; border-style:dashed;" onclick="addSubtaskInModal()">＋ 新增子任務</button>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+            <button class="btn btn-save" onclick="saveEdit()">儲存變更</button>
         </div>
     </div>
-
-    <script>
-        /* --- JavaScript 腳本開始 --- */
-        document.addEventListener('DOMContentLoaded', () => {
-            const taskInput = document.getElementById('taskInput');
-            const dueDateInput = document.getElementById('dueDateInput');
-            const prioritySelect = document.getElementById('prioritySelect');
-            const addTaskBtn = document.getElementById('addTaskBtn');
-            const taskList = document.getElementById('taskList');
-            const filterBtns = document.querySelectorAll('.filter-btn');
-
-            // 匯出入相關元素
-            const exportBtn = document.getElementById('exportBtn');
-            const importBtn = document.getElementById('importBtn');
-            const importFile = document.getElementById('importFile');
-
-            // 暗黑模式相關元素
-            const darkModeToggle = document.getElementById('darkModeToggle');
-
-
-            let tasks = []; // 儲存所有任務的陣列
-            let currentFilter = 'all'; // 當前篩選狀態
-
-            // --- 初始化和載入任務 ---
-            loadTasks();
-            loadDarkModePreference(); // 載入暗黑模式設定
-            renderTasks();
-            updateFilterButtons();
-
-            // --- 事件監聽器 ---
-            addTaskBtn.addEventListener('click', addTask);
-            taskInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    addTask();
-                }
-            });
-            taskList.addEventListener('click', handleTaskActions);
-            filterBtns.forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    currentFilter = e.target.dataset.filter;
-                    updateFilterButtons();
-                    renderTasks();
-                });
-            });
-
-            // 匯出入事件監聽
-            exportBtn.addEventListener('click', exportTasksToFile);
-            importBtn.addEventListener('click', () => importFile.click()); // 點擊匯入按鈕觸發檔案選擇
-            importFile.addEventListener('change', importTasksFromFile); // 檔案選擇後處理
-
-            // 暗黑模式切換監聽
-            darkModeToggle.addEventListener('click', toggleDarkMode);
-
-            // 拖曳功能
-            let draggedItem = null;
-
-            taskList.addEventListener('dragstart', (e) => {
-                if (e.target.classList.contains('task-item')) {
-                    draggedItem = e.target;
-                    e.dataTransfer.effectAllowed = 'move';
-                    e.target.classList.add('dragging');
-                }
-            });
-
-            taskList.addEventListener('dragover', (e) => {
-                e.preventDefault(); // 允許拖曳
-                const currentItem = e.target.closest('.task-item');
-                if (currentItem && currentItem !== draggedItem) {
-                    const bounding = currentItem.getBoundingClientRect();
-                    const offset = bounding.y + (bounding.height / 2);
-                    if (e.clientY > offset) {
-                        // 向下移動
-                        taskList.insertBefore(draggedItem, currentItem.nextSibling);
-                    } else {
-                        // 向上移動
-                        taskList.insertBefore(draggedItem, currentItem);
-                    }
-                }
-            });
-
-            taskList.addEventListener('dragend', () => {
-                if (draggedItem) {
-                    draggedItem.classList.remove('dragging');
-                    draggedItem = null;
-                    saveTasksOrder(); // 儲存新的順序
-                }
-            });
-
-            // --- 任務操作函數 ---
-
-            function addTask() {
-                const text = taskInput.value.trim();
-                const dueDate = dueDateInput.value;
-                const priority = prioritySelect.value;
-
-                if (text === '') {
-                    alert('任務內容不能為空！');
-                    return;
-                }
-
-                const newTask = {
-                    id: Date.now(), // 用時間戳記作為唯一ID
-                    text: text,
-                    completed: false,
-                    dueDate: dueDate,
-                    priority: priority,
-                    notes: '' // 新增備註屬性
-                };
-
-                tasks.unshift(newTask); // 新增任務到最前面
-                saveTasks();
-                renderTasks();
-
-                // 清空輸入欄
-                taskInput.value = '';
-                dueDateInput.value = '';
-                prioritySelect.value = 'medium'; // 重設優先級
-            }
-
-            function handleTaskActions(e) {
-                const target = e.target;
-                const taskItem = target.closest('.task-item');
-                if (!taskItem) return;
-
-                const taskId = parseInt(taskItem.dataset.id);
-
-                if (target.classList.contains('complete-checkbox')) {
-                    toggleComplete(taskId);
-                } else if (target.classList.contains('edit-btn') || target.classList.contains('task-text')) {
-                    editTaskText(taskId, taskItem); // 編輯主文字
-                } else if (target.classList.contains('delete-btn')) {
-                    deleteTask(taskId);
-                } else if (target.classList.contains('task-notes-toggle') || target.classList.contains('task-notes')) {
-                    editTaskNotes(taskId, taskItem); // 編輯備註
-                }
-            }
-
-            function toggleComplete(id) {
-                tasks = tasks.map(task =>
-                    task.id === id ? { ...task, completed: !task.completed } : task
-                );
-                saveTasks();
-                renderTasks();
-            }
-
-            // 編輯任務主文字
-            function editTaskText(id, taskItemElement) {
-                const taskTextElement = taskItemElement.querySelector('.task-text');
-                const originalText = taskTextElement.innerText;
-
-                if (taskTextElement.contentEditable === 'true') { // 已經在編輯模式
-                    return;
-                }
-
-                taskTextElement.contentEditable = true;
-                taskItemElement.classList.add('editing'); // 添加編輯樣式
-                taskTextElement.focus();
-
-                const range = document.createRange();
-                range.selectNodeContents(taskTextElement);
-                const selection = window.getSelection();
-                selection.removeAllRanges();
-                selection.addRange(range);
-
-                const saveEdit = () => {
-                    const newText = taskTextElement.innerText.trim();
-                    if (newText === '') {
-                        alert('任務內容不能為空！');
-                        taskTextElement.innerText = originalText;
-                    } else {
-                        tasks = tasks.map(task =>
-                            task.id === id ? { ...task, text: newText } : task
-                        );
-                        saveTasks();
-                    }
-                    taskTextElement.contentEditable = false;
-                    taskItemElement.classList.remove('editing'); // 移除編輯樣式
-                    renderTasks();
-                };
-
-                taskTextElement.addEventListener('blur', saveEdit, { once: true });
-                taskTextElement.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveEdit();
-                    }
-                }, { once: true });
-            }
-
-            // 編輯任務備註
-            function editTaskNotes(id, taskItemElement) {
-                const taskNotesElement = taskItemElement.querySelector('.task-notes');
-                const taskNotesToggle = taskItemElement.querySelector('.task-notes-toggle');
-                const originalNotes = taskNotesElement.innerText.trim() === '點擊新增備註...' ? '' : taskNotesElement.innerText;
-
-
-                // 先確保備註區塊是可見的
-                if (taskNotesElement.style.display === 'none') {
-                    taskNotesElement.style.display = 'block';
-                }
-
-                if (taskNotesElement.contentEditable === 'true') { // 已經在編輯模式
-                    return;
-                }
-
-                taskNotesElement.contentEditable = true;
-                taskNotesElement.focus();
-
-                // 如果是預設文字，選中它以便用戶直接輸入
-                if (taskNotesElement.innerText.trim() === '點擊新增備註...') {
-                    const range = document.createRange();
-                    range.selectNodeContents(taskNotesElement);
-                    const selection = window.getSelection();
-                    selection.removeAllRanges();
-                    selection.addRange(range);
-                }
-
-
-                const saveNotes = () => {
-                    const newNotes = taskNotesElement.innerText.trim();
-                    tasks = tasks.map(task =>
-                        task.id === id ? { ...task, notes: newNotes } : task
-                    );
-                    saveTasks();
-                    taskNotesElement.contentEditable = false;
-                    renderTasks(); // 重新渲染以更新顯示和備註提示文字
-                };
-
-                taskNotesElement.addEventListener('blur', saveNotes, { once: true });
-                // 備註允許換行，所以 Enter 鍵不觸發保存
-            }
-
-            function deleteTask(id) {
-                if (confirm('確定要刪除這個任務嗎？')) {
-                    tasks = tasks.filter(task => task.id !== id);
-                    saveTasks();
-                    renderTasks();
-                }
-            }
-
-            function saveTasksOrder() {
-                const orderedTaskIds = Array.from(taskList.children).map(item => parseInt(item.dataset.id));
-                const newOrderedTasks = [];
-                orderedTaskIds.forEach(id => {
-                    const task = tasks.find(t => t.id === id);
-                    if (task) {
-                        newOrderedTasks.push(task);
-                    }
-                });
-                tasks = newOrderedTasks;
-                saveTasks();
-            }
-
-            // --- 匯出入功能 ---
-
-            function exportTasksToFile() {
-                const dataStr = JSON.stringify(tasks, null, 2);
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `todolist_backup_${new Date().toISOString().slice(0, 10)}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                alert('資料已匯出為 JSON 檔案！');
-            }
-
-            function importTasksFromFile(event) {
-                const file = event.target.files[0];
-                if (!file) {
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        if (Array.isArray(importedData) && importedData.every(item => typeof item === 'object' && 'id' in item && 'text' in item && 'completed' in item)) {
-                            tasks = importedData;
-                            tasks = tasks.map(task => ({
-                                ...task,
-                                priority: task.priority || 'medium',
-                                dueDate: task.dueDate || '',
-                                notes: task.notes || '' // 確保匯入時也有 notes 屬性
-                            }));
-
-                            saveTasks();
-                            renderTasks();
-                            alert('資料已成功匯入！');
-                        } else {
-                            alert('匯入的檔案格式不正確，請選擇有效的 To-Do List JSON 檔案。');
-                        }
-                    } catch (error) {
-                        alert('解析檔案時發生錯誤，請確認檔案是否為有效的 JSON 格式。\n錯誤訊息: ' + error.message);
-                        console.error('匯入檔案錯誤:', error);
-                    }
-                };
-                reader.readAsText(file);
-                event.target.value = '';
-            }
-
-            // --- 暗黑模式功能 ---
-            function toggleDarkMode() {
-                document.body.classList.toggle('dark-mode');
-                const isDarkMode = document.body.classList.contains('dark-mode');
-                localStorage.setItem('darkModeEnabled', isDarkMode);
-            }
-
-            function loadDarkModePreference() {
-                const isDarkMode = localStorage.getItem('darkModeEnabled') === 'true';
-                if (isDarkMode) {
-                    document.body.classList.add('dark-mode');
-                }
-            }
-
-
-            // --- 資料儲存與載入 ---
-
-            function saveTasks() {
-                localStorage.setItem('myWorkToDoList', JSON.stringify(tasks));
-            }
-
-            function loadTasks() {
-                const storedTasks = localStorage.getItem('myWorkToDoList');
-                if (storedTasks) {
-                    tasks = JSON.parse(storedTasks);
-                    tasks = tasks.map(task => ({
-                        ...task,
-                        priority: task.priority || 'medium',
-                        dueDate: task.dueDate || '',
-                        notes: task.notes || '' // 確保載入時也有 notes 屬性
-                    }));
-                }
-            }
-
-            // --- 渲染任務到界面 ---
-
-            function renderTasks() {
-                taskList.innerHTML = '';
-
-                const filteredTasks = tasks.filter(task => {
-                    if (currentFilter === 'all') return true;
-                    if (currentFilter === 'pending') return !task.completed;
-                    if (currentFilter === 'completed') return task.completed;
-                    return false;
-                });
-
-                // **修正拖曳問題：** 移除完成狀態排序，讓篩選器控制顯示，拖曳後的順序在其他排序條件相同時被保留
-                filteredTasks.sort((a, b) => {
-                    const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
-                    // 1. 優先級排序 (高 > 中 > 低)
-                    if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-                        return priorityOrder[b.priority] - priorityOrder[a.priority];
-                    }
-                    // 2. 截止日期排序 (越近的越前面，沒有日期的排最後)
-                    if (a.dueDate && b.dueDate) {
-                        return new Date(a.dueDate) - new Date(b.dueDate);
-                    }
-                    if (a.dueDate && !b.dueDate) return -1;
-                    if (!a.dueDate && b.dueDate) return 1;
-                    return 0; // 如果其他排序條件相同，保留在篩選前陣列中的相對順序 (即拖曳後的順序)
-                });
-
-
-                if (filteredTasks.length === 0) {
-                    const noTaskMessage = document.createElement('li');
-                    noTaskMessage.className = 'no-task-message';
-                    noTaskMessage.innerText = '目前沒有任務，趕快新增一個吧！';
-                    taskList.appendChild(noTaskMessage);
-                    return;
-                }
-
-                filteredTasks.forEach(task => {
-                    const li = document.createElement('li');
-                    li.className = `task-item ${task.completed ? 'completed' : ''}`;
-                    li.dataset.id = task.id;
-                    li.draggable = true;
-
-                    const dueDateText = task.dueDate ? `<span class="due-date">${task.dueDate}</span>` : '';
-                    // 根據是否有備註決定顯示的備註提示文字
-                    const notesDisplay = task.notes ? task.notes : '點擊新增備註...';
-                    const notesToggleText = task.notes ? '備註 💬' : '備註 ➕';
-                    const notesInitialDisplay = task.notes ? 'block' : 'none'; // 如果有備註，預設顯示備註區塊
-
-                    li.innerHTML = `
-                        <input type="checkbox" class="complete-checkbox" ${task.completed ? 'checked' : ''}>
-                        <div class="task-content">
-                            <span class="task-text">${task.text}</span>
-                            <div class="task-meta">
-                                ${dueDateText}
-                            </div>
-                            <div class="task-notes-wrapper">
-                                <span class="task-notes-toggle">${notesToggleText}</span>
-                                <div class="task-notes" contenteditable="false" style="display:${notesInitialDisplay};">${notesDisplay}</div>
-                            </div>
-                        </div>
-                        <div class="priority-tag ${task.priority}">${getPriorityText(task.priority)}</div>
-                        <div class="task-actions">
-                            <button class="edit-btn">編輯</button>
-                            <button class="delete-btn">刪除</button>
-                        </div>
-                    `;
-                    taskList.appendChild(li);
-
-                    // 為備註區塊的顯示/隱藏添加事件監聽
-                    const currentNotesToggle = li.querySelector('.task-notes-toggle');
-                    const currentNotes = li.querySelector('.task-notes');
-                    currentNotesToggle.addEventListener('click', () => {
-                        currentNotes.style.display = currentNotes.style.display === 'none' ? 'block' : 'none';
-                    });
-                });
-            }
-
-            function getPriorityText(priority) {
-                switch (priority) {
-                    case 'high': return '高';
-                    case 'medium': return '中';
-                    case 'low': return '低';
-                    default: return '';
-                }
-            }
-
-            function updateFilterButtons() {
-                filterBtns.forEach(btn => {
-                    if (btn.dataset.filter === currentFilter) {
-                        btn.classList.add('active');
-                    } else {
-                        btn.classList.remove('active');
-                    }
-                });
+</div>
+
+<script>
+    let tasks = [];
+    let currentFilter = 'active'; // 預設改為 進行中
+    let deletedTaskStack = null;
+    let toastTimeout = null;
+    const STORAGE_KEY = 'todo_pro_v10_data';
+    const THEME_KEY = 'todo_pro_theme';
+    let fileHandle = null; 
+    let hasUnsavedChanges = false;
+
+    window.onload = function() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) tasks = JSON.parse(saved);
+        
+        const theme = localStorage.getItem(THEME_KEY);
+        if (theme === 'dark') document.body.classList.add('dark-mode');
+
+        document.getElementById('newDate').valueAsDate = new Date();
+        document.getElementById('newInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addNewTask();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveToLocalFile();
             }
         });
-        /* --- JavaScript 腳本結束 --- */
-    </script>
+        
+        window.addEventListener('beforeunload', function (e) {
+            if (hasUnsavedChanges) {
+                e.preventDefault(); e.returnValue = '';
+            }
+        });
+
+        initListDrag();
+        render();
+    };
+
+    async function openLocalFile() {
+        try {
+            [fileHandle] = await window.showOpenFilePicker({
+                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
+            });
+            const file = await fileHandle.getFile();
+            const contents = await file.text();
+            try {
+                tasks = JSON.parse(contents);
+                saveData(false);
+                hasUnsavedChanges = false;
+                render();
+                updateFileStatus('已開啟: ' + file.name, 'saved');
+            } catch(e) { alert('檔案格式錯誤'); }
+        } catch (err) {}
+    }
+
+    async function saveToLocalFile() {
+        if (!fileHandle) return exportData();
+        try {
+            const writable = await fileHandle.createWritable();
+            await writable.write(JSON.stringify(tasks));
+            await writable.close();
+            hasUnsavedChanges = false;
+            updateFileStatus('儲存成功！ ' + new Date().toLocaleTimeString(), 'saved');
+        } catch (err) {
+            alert('儲存失敗');
+            updateFileStatus('儲存失敗', 'unsaved');
+        }
+    }
+
+    function updateFileStatus(msg, type) {
+        const el = document.getElementById('fileStatus');
+        el.innerText = msg;
+        el.className = type;
+        if(type === 'unsaved') el.innerText += ' (有變更未存檔)';
+    }
+
+    function saveData(isUserEdit = true) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        updateStats();
+        if(isUserEdit) {
+            hasUnsavedChanges = true;
+            if(fileHandle) updateFileStatus('有變更未存檔 (請按儲存)', 'unsaved');
+        }
+    }
+
+    function addNewTask() {
+        const input = document.getElementById('newInput');
+        const date = document.getElementById('newDate');
+        const pri = document.getElementById('newPriority');
+        const cat = document.getElementById('newCategory');
+        
+        if (!input.value.trim()) return alert('請輸入內容');
+
+        tasks.push({
+            id: Date.now(),
+            text: input.value,
+            date: date.value,
+            priority: pri.value,
+            category: cat.value,
+            note: '',
+            color: 'default', 
+            completed: false,
+            isCollapsed: false,
+            subtasks: []
+        });
+
+        input.value = '';
+        saveData();
+        render();
+        const list = document.getElementById('taskList');
+        setTimeout(() => list.scrollTop = list.scrollHeight, 50);
+    }
+
+    function duplicateTask(id) {
+        const index = tasks.findIndex(x => x.id === id);
+        if (index > -1) {
+            const newTask = JSON.parse(JSON.stringify(tasks[index]));
+            newTask.id = Date.now();
+            newTask.text += " (副本)";
+            tasks.splice(index + 1, 0, newTask);
+            saveData();
+            render();
+        }
+    }
+
+    function toggleTask(id) {
+        const t = tasks.find(x => x.id === id);
+        if(t) { t.completed = !t.completed; saveData(); render(); }
+    }
+    
+    function toggleSubtaskView(id) {
+        const t = tasks.find(x => x.id === id);
+        if(t) { t.isCollapsed = !t.isCollapsed; saveData(); render(); }
+    }
+
+    function toggleSubtaskStatus(taskId, subIndex) {
+        const t = tasks.find(x => x.id === taskId);
+        if(t && t.subtasks[subIndex]) {
+            t.subtasks[subIndex].completed = !t.subtasks[subIndex].completed;
+            saveData();
+            render();
+        }
+    }
+
+    function deleteTask(id) {
+        const index = tasks.findIndex(x => x.id === id);
+        if(index > -1) {
+            deletedTaskStack = { task: tasks[index], index: index };
+            tasks.splice(index, 1);
+            saveData();
+            render();
+            showToast('已刪除任務');
+        }
+    }
+
+    function undoDelete() {
+        if(deletedTaskStack) {
+            tasks.splice(deletedTaskStack.index, 0, deletedTaskStack.task);
+            deletedTaskStack = null;
+            saveData();
+            render();
+            hideToast();
+        }
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        document.getElementById('toastMsg').innerText = msg;
+        toast.classList.add('show');
+        if(toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(hideToast, 4000);
+    }
+
+    function hideToast() { document.getElementById('toast').classList.remove('show'); }
+
+    function initListDrag() {
+        const container = document.getElementById('taskList');
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(container, e.clientY);
+            const draggable = document.querySelector('.dragging');
+            if (!draggable) return;
+            if (afterElement == null) container.appendChild(draggable);
+            else container.insertBefore(draggable, afterElement);
+        });
+
+        container.addEventListener('drop', e => {
+            e.preventDefault();
+            const newOrderIds = Array.from(container.querySelectorAll('.task-item')).map(item => Number(item.getAttribute('data-id')));
+            const newTasks = [];
+            newOrderIds.forEach(id => {
+                const t = tasks.find(x => x.id === id);
+                if(t) newTasks.push(t);
+            });
+            const currentIds = tasks.map(t => t.id);
+            const hiddenTasks = tasks.filter(t => !newOrderIds.includes(t.id) && !isTaskVisibleInCurrentFilter(t)); 
+            
+            if(newTasks.length + hiddenTasks.length === tasks.length) {
+                tasks = [...newTasks, ...hiddenTasks];
+            } else {
+                 tasks = newTasks; 
+                 const renderedIds = newTasks.map(t => t.id);
+                 const missing = currentIds.filter(id => !renderedIds.includes(id)).map(id => tasks.find(t => t.id === id));
+                 tasks.push(...missing);
+            }
+            saveData();
+            render();
+        });
+    }
+    
+    function isTaskVisibleInCurrentFilter(t) {
+        if(currentFilter === 'active' && t.completed) return false;
+        if(currentFilter === 'completed' && !t.completed) return false;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        if(search && !t.text.toLowerCase().includes(search)) return false;
+        return true;
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+            else return closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    let currentEditSubtasks = [];
+    function openEditModal(id) {
+        const t = tasks.find(x => x.id === id);
+        if(!t) return;
+        document.getElementById('editId').value = t.id;
+        document.getElementById('editTitle').value = t.text;
+        document.getElementById('editDate').value = t.date;
+        document.getElementById('editPriority').value = t.priority;
+        document.getElementById('editCategory').value = t.category || 'Other';
+        document.getElementById('editNotes').value = t.note || '';
+        
+        selectColor(t.color || 'default');
+
+        currentEditSubtasks = JSON.parse(JSON.stringify(t.subtasks || []));
+        renderEditSubtasks();
+        document.getElementById('editModal').classList.add('active');
+    }
+    function closeModal() { document.getElementById('editModal').classList.remove('active'); }
+
+    function selectColor(colorClass) {
+        document.getElementById('editColor').value = colorClass;
+        document.querySelectorAll('.color-option').forEach(opt => {
+            opt.classList.remove('selected');
+            if(opt.dataset.color === colorClass) opt.classList.add('selected');
+        });
+    }
+
+    function renderEditSubtasks() {
+        const list = document.getElementById('editSubtaskList');
+        list.innerHTML = '';
+        currentEditSubtasks.forEach((sub, index) => {
+            const li = document.createElement('li');
+            li.className = 'subtask-edit-item';
+            li.draggable = true;
+            li.dataset.index = index;
+            li.addEventListener('dragstart', () => li.classList.add('dragging'));
+            li.addEventListener('dragend', () => { li.classList.remove('dragging'); renderEditSubtasks(); });
+            li.addEventListener('dragover', e => {
+                e.preventDefault();
+                const draggingItem = list.querySelector('.dragging');
+                if(draggingItem !== li) {
+                     const srcIdx = Number(draggingItem.dataset.index);
+                     const targetIdx = Number(li.dataset.index);
+                     const [moved] = currentEditSubtasks.splice(srcIdx, 1);
+                     currentEditSubtasks.splice(targetIdx, 0, moved);
+                     if(srcIdx < targetIdx) list.insertBefore(draggingItem, li.nextSibling);
+                     else list.insertBefore(draggingItem, li);
+                }
+            });
+            li.innerHTML = `
+                <div class="drag-handle">≡</div>
+                <input type="checkbox" style="width:20px;" ${sub.completed ? 'checked' : ''} onchange="updateSubStatus(${index}, this.checked)">
+                <input type="text" class="subtask-input" value="${sub.text}" placeholder="輸入子任務..." oninput="updateSubText(${index}, this.value)">
+                <button class="btn-sub-del" onclick="removeSubtaskInModal(${index})">×</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+    function addSubtaskInModal() { currentEditSubtasks.push({ id: Date.now(), text: '', completed: false }); renderEditSubtasks(); }
+    function removeSubtaskInModal(index) { currentEditSubtasks.splice(index, 1); renderEditSubtasks(); }
+    function updateSubText(index, val) { currentEditSubtasks[index].text = val; }
+    function updateSubStatus(index, checked) { currentEditSubtasks[index].completed = checked; }
+    function saveEdit() {
+        const id = Number(document.getElementById('editId').value);
+        const t = tasks.find(x => x.id === id);
+        if(t) {
+            t.text = document.getElementById('editTitle').value;
+            t.date = document.getElementById('editDate').value;
+            t.priority = document.getElementById('editPriority').value;
+            t.category = document.getElementById('editCategory').value;
+            t.note = document.getElementById('editNotes').value;
+            t.color = document.getElementById('editColor').value; 
+            t.subtasks = currentEditSubtasks.filter(s => s.text.trim() !== '');
+            saveData();
+            render();
+            closeModal();
+        }
+    }
+
+    function render() {
+        const list = document.getElementById('taskList');
+        list.innerHTML = '';
+        const today = new Date().toISOString().slice(0, 10);
+        const searchText = document.getElementById('searchInput').value.toLowerCase();
+
+        let filtered = tasks.filter(t => {
+            if(currentFilter === 'active' && t.completed) return false;
+            if(currentFilter === 'completed' && !t.completed) return false;
+            if(searchText && !t.text.toLowerCase().includes(searchText)) return false;
+            return true;
+        });
+
+        if(filtered.length === 0) list.innerHTML = '<div style="text-align:center;padding:20px;color:#999">無資料 / 無符合搜尋結果</div>';
+
+        filtered.forEach(task => {
+            const li = document.createElement('li');
+            
+            // --- 智慧底色邏輯 ---
+            let finalColorClass = task.color || 'default';
+
+            if (finalColorClass === 'default' && !task.completed && task.date) {
+                if (task.date < today) {
+                    finalColorClass = 'bg-red'; 
+                } else if (task.date === today) {
+                    finalColorClass = 'bg-orange'; 
+                }
+            }
+            
+            li.className = `task-item ${task.completed ? 'completed' : ''} ${finalColorClass}`;
+            
+            li.setAttribute('data-id', task.id);
+            li.draggable = true;
+            li.addEventListener('dragstart', () => li.classList.add('dragging'));
+            li.addEventListener('dragend', () => li.classList.remove('dragging'));
+
+            let priInfo = { cls: 'low', txt: '低' };
+            if(task.priority === 'mid') priInfo = { cls: 'mid', txt: '中' };
+            if(task.priority === 'high') priInfo = { cls: 'high', txt: '高' };
+            
+            let catName = '其他';
+            if(task.category === 'Work') catName = '工作';
+            if(task.category === 'Personal') catName = '個人';
+            if(task.category === 'Study') catName = '學習';
+
+            let dateDisplay = task.date || '--';
+            let dateClass = 'task-date';
+            if(task.date && task.date < today && !task.completed) { dateClass += ' overdue'; dateDisplay += ' (已逾期)'; }
+            else if (task.date === today && !task.completed) { dateClass += ' today'; dateDisplay += ' (今天)'; }
+
+            const subTotal = task.subtasks ? task.subtasks.length : 0;
+            const subDone = task.subtasks ? task.subtasks.filter(s => s.completed).length : 0;
+            const hasNotes = task.note && task.note.trim() !== '';
+            let noteHtml = hasNotes ? '<span class="has-notes" title="有備註內容">📝</span>' : '';
+
+            let subHtml = '';
+            let collapseBtnHtml = '';
+            
+            if(subTotal > 0 || hasNotes) {
+                const arrow = task.isCollapsed ? '▼' : '▲';
+                const wrapperClass = task.isCollapsed ? 'subtasks-wrapper hidden' : 'subtasks-wrapper';
+                
+                let btnText = '';
+                if(subTotal > 0) btnText = `<span style="font-size:11px; margin-right:4px;">${subDone}/${subTotal}</span>`;
+                else btnText = `<span style="font-size:11px; margin-right:4px;">📝</span>`;
+
+                collapseBtnHtml = `<div class="btn-collapse ${task.isCollapsed ? 'collapsed' : ''}" onclick="toggleSubtaskView(${task.id})">${btnText}<span class="arrow">${arrow}</span></div>`;
+                
+                subHtml += `<div class="${wrapperClass}">`;
+                if(hasNotes) {
+                    const linkedNote = task.note.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+                    subHtml += `<div class="task-note-view">${linkedNote}</div>`;
+                }
+                if(subTotal > 0) {
+                    const progressPercent = Math.round((subDone/subTotal)*100);
+                    subHtml += `<div class="progress-container"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${progressPercent}%"></div></div></div>`;
+                    task.subtasks.forEach((s, index) => {
+                        subHtml += `<div class="subtask-row ${s.completed ? 'done' : ''}" onclick="toggleSubtaskStatus(${task.id}, ${index})"><div class="sub-check">${s.completed ? '✓' : ''}</div><span>${s.text}</span></div>`;
+                    });
+                }
+                subHtml += `</div>`;
+            }
+
+            li.innerHTML = `
+                <div class="task-header">
+                    <div class="checkbox" onclick="toggleTask(${task.id})"></div>
+                    <div class="task-content">
+                        <div style="display:flex; align-items:flex-start; justify-content:space-between;">
+                            <div class="task-title" onclick="openEditModal(${task.id})">${task.text} ${noteHtml}</div>
+                            ${collapseBtnHtml}
+                        </div>
+                        <div class="task-meta">
+                            <span class="cat-tag">${catName}</span>
+                            <span class="tag ${priInfo.cls}">${priInfo.txt}優先</span>
+                            <span class="${dateClass}">📅 ${dateDisplay}</span>
+                        </div>
+                        ${subHtml}
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn-icon btn-copy" onclick="duplicateTask(${task.id})" title="複製">❐</button>
+                        <button class="btn-icon btn-edit" onclick="openEditModal(${task.id})" title="編輯">✎</button>
+                        <button class="btn-icon btn-del" onclick="deleteTask(${task.id})" title="刪除">🗑</button>
+                    </div>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+        updateStats();
+    }
+
+    function setFilter(type, btn) {
+        currentFilter = type;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        render();
+    }
+    function updateStats() {
+        document.getElementById('statTotal').innerText = tasks.length;
+        document.getElementById('statDone').innerText = tasks.filter(t => t.completed).length;
+    }
+    function toggleTheme() {
+        document.body.classList.toggle('dark-mode');
+        localStorage.setItem(THEME_KEY, document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+    }
+    async function exportData() {
+        const str = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(tasks));
+        const a = document.createElement('a');
+        a.href = str; a.download = `todo_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+</script>
 </body>
 </html>
