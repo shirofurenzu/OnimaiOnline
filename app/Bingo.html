@@ -486,12 +486,20 @@
                         )}
                     </div>
 
-                    <button
-                        onClick={() => initializeGame(gridSize)}
-                        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-indigo-200"
-                    >
-                        開始遊戲
-                    </button>
+                    <div className="flex gap-3 w-full">
+                        <button
+                            onClick={() => initializeGame(gridSize)}
+                            className="flex-[2] py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-indigo-200"
+                        >
+                            開始遊戲
+                        </button>
+                         <a
+                            href="../index.html"
+                            className="flex-1 py-3.5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-lg transition-all"
+                        >
+                            回首頁
+                        </a>
+                    </div>
                     </div>
                 )}
 
