@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>字卡/跑馬燈 (Pro v3.1)</title>
+    <style>
+        /* --- 基礎重置 --- */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #000000;
+        }
+
+        /* --- 展示區域 --- */
+        #display-stage {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: background-color 0.3s;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 翻轉層 Wrapper */
+        #flip-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.3s;
+            transform: scale(1, 1);
+        }
+
+        /* 文字本體 */
+        #display-text {
+            margin: 0;
+            padding: 0;
+            line-height: 1.2;
+            white-space: pre-wrap;
+            transition: color 0.3s, font-size 0.1s, font-weight 0.2s, font-family 0.2s;
+            color: #ffffff;
+            /* 預設水平置中 */
+            text-align: center;
+        }
+
+        /* --- 模式與排列組合樣式 --- */
+
+        /* 1. 靜態模式 (Static) */
+        body.mode-static #display-text {
+            /* Flexbox 已經處理置中，這裡只需處理內距 */
+            padding: 20px;
+        }
+
+        /* 2. 跑馬燈模式 (Marquee) */
+        body.mode-marquee #flip-wrapper {
+            display: block; 
+            position: relative;
+        }
+
+        body.mode-marquee #display-text {
+            white-space: nowrap;
+            position: absolute;
+            width: auto;
+            /* 預設動畫 (水平文字) */
+            top: 50%;
+            transform: translateY(-50%); 
+            padding-left: 100vw;
+            animation: marquee-scroll linear infinite;
+        }
+
+        /* 動畫：水平文字向左跑 */
+        @keyframes marquee-scroll {
+            0% { left: 0; transform: translate(0, -50%); }
+            100% { left: 0; transform: translate(-100%, -50%); }
+        }
+
+        /* --- 垂直排列 (Vertical Layout) --- */
+        
+        /* 通用垂直設定 */
+        .layout-vertical #display-text {
+            writing-mode: vertical-rl; /* 直書：從右到左 */
+            text-orientation: upright; /* 文字直立 */
+        }
+
+        /* 垂直 + 跑馬燈 */
+        /* 垂直跑馬燈邏輯：依然是從螢幕右邊跑到左邊 (TranslateX) */
+        /* 因為 writing-mode: vertical-rl 會讓 block 向左長大，所以既有的 marquee-scroll 動畫(translateX -100%)依然適用 */
+        .layout-vertical.mode-marquee #display-text {
+            top: 50%;
+            left: auto; /* 重置 */
+            transform: translateY(-50%);
+            /* 垂直模式下，padding-left 變成物理左邊，會造成位置錯誤 */
+            padding-left: 0; 
+            /* 使用 margin-left 把文字推到螢幕右側外 */
+            margin-left: 100vw; 
+        }
+
+        /* --- UI 控制層 --- */
+        #settings-trigger {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            border: 2px solid rgba(255,255,255,0.3);
+            transition: opacity 0.3s;
+        }
+        .ui-hidden #settings-trigger { opacity: 0.1; }
+        .ui-hidden #settings-trigger:hover { opacity: 1; }
+
+        #controls-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            max-height: 85vh;
+            background-color: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            transform: translateY(110%);
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            z-index: 101;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        }
+        #controls-panel.open { transform: translateY(0); }
+
+        .panel-header {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .control-group { margin-bottom: 20px; }
+        .control-label { display: block; margin-bottom: 8px; font-size: 14px; color: #aaa; }
+        
+        input[type="text"] {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444;
+            background: #333; color: white; font-size: 16px; outline: none;
+        }
+        input[type="text"]:focus { border-color: #4CAF50; }
+
+        input[type="range"] {
+            width: 100%; height: 6px; 
+            -webkit-appearance: none;
+            appearance: none;
+            background: #555; border-radius: 3px; outline: none; margin: 10px 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px; height: 24px; border-radius: 50%;
+            background: #4CAF50; cursor: pointer;
+        }
+
+        /* Toggle Button Group */
+        .toggle-group { display: flex; background: #333; border-radius: 8px; padding: 4px; }
+        .toggle-group label {
+            flex: 1; text-align: center; padding: 10px; font-size: 14px;
+            cursor: pointer; border-radius: 6px; color: #aaa; transition: all 0.2s;
+        }
+        .toggle-group input:checked + label { background: #4CAF50; color: white; font-weight: bold; }
+        .toggle-group input { display: none; }
+
+        /* Font Controls - Modified for single item */
+        .font-controls { display: flex; } 
+        .checkbox-btn {
+            flex: 1;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: #333; padding: 10px; border-radius: 8px; cursor: pointer;
+            border: 1px solid #444; color: #ccc; font-size: 14px;
+        }
+        .checkbox-btn input { display: none; }
+        .checkbox-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+
+        .preset-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .preset-btn {
+            width: 40px; height: 40px; border-radius: 50%; border: 2px solid #555;
+            cursor: pointer; flex-shrink: 0; position: relative;
+        }
+        
+        /* Color Row */
+        .color-row { display: flex; gap: 10px; align-items: center; margin-top: 10px;}
+        input[type="color"] { border: none; width: 40px; height: 40px; background: none; padding: 0; }
+
+        .action-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .btn {
+            padding: 12px; border: none; border-radius: 8px; font-size: 14px;
+            font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-fullscreen { background: #2196F3; color: white; }
+        .btn-reset { background: #666; color: white; }
+
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 100; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        #overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .flip-controls { display: flex; gap: 10px; }
+        .flip-btn {
+            flex: 1; padding: 10px; background: #333; border: 1px solid #444;
+            border-radius: 8px; color: #ccc; cursor: pointer; text-align: center; font-size: 14px;
+        }
+        .flip-btn.active { background: #4CAF50; color: white; border-color: #4CAF50; }
+
+    </style>
+</head>
+<body class="mode-static">
+
+    <div id="display-stage">
+        <div id="flip-wrapper">
+            <h1 id="display-text">請點擊設定</h1>
+        </div>
+    </div>
+
+    <div id="settings-trigger" onclick="openPanel()">⚙️</div>
+    <div id="overlay" onclick="closePanel()"></div>
+
+    <div id="controls-panel">
+        <div class="panel-header">
+            <span style="font-size:18px; font-weight:bold;">顯示設定</span>
+            <button onclick="closePanel()" style="background:none; border:none; color:#aaa; font-size:24px;">✕</button>
+        </div>
+        
+        <div class="panel-content">
+            <!-- 1. 文字輸入 -->
+            <div class="control-group">
+                <label class="control-label">文字內容</label>
+                <input type="text" id="input-text" value="請輸入文字" placeholder="輸入文字...">
+            </div>
+
+            <!-- 2. 模式與排列 -->
+            <div class="control-group">
+                <label class="control-label">顯示模式</label>
+                <div class="toggle-group">
+                    <input type="radio" name="mode" id="mode-static" value="static" checked>
+                    <label for="mode-static">靜態字卡</label>
+                    <input type="radio" name="mode" id="mode-marquee" value="marquee">
+                    <label for="mode-marquee">跑馬燈</label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">文字排列</label>
+                <div class="toggle-group">
+                    <input type="radio" name="layout" id="layout-h" value="horizontal" checked>
+                    <label for="layout-h">水平 (預設)</label>
+                    <input type="radio" name="layout" id="layout-v" value="vertical">
+                    <label for="layout-v">垂直 (直書)</label>
+                </div>
+            </div>
+
+            <!-- 3. 翻轉特效 (已移動至此) -->
+            <div class="control-group">
+                <label class="control-label">翻轉 (HUD/提詞機)</label>
+                <div class="flip-controls">
+                    <div class="flip-btn" id="btn-flip-x" onclick="toggleFlip('x')">左右鏡像</div>
+                    <div class="flip-btn" id="btn-flip-y" onclick="toggleFlip('y')">上下翻轉</div>
+                </div>
+            </div>
+
+            <!-- 4. 字體樣式 (移除標楷體，保留粗體) -->
+            <div class="control-group">
+                <label class="control-label">字體風格</label>
+                <div class="font-controls">
+                    <!-- 粗體選擇 -->
+                    <label class="checkbox-btn" id="btn-font-bold">
+                        <input type="checkbox" id="check-font-bold">
+                        <span>粗體文字</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 5. 配色 -->
+            <div class="control-group">
+                <label class="control-label">配色主題</label>
+                <div class="preset-container" id="preset-container"></div>
+                <div class="color-row">
+                    <span style="font-size:12px; color:#aaa; flex:1;">自訂文字/背景:</span>
+                    <input type="color" id="text-color" value="#ffffff">
+                    <input type="color" id="bg-color" value="#000000">
+                </div>
+            </div>
+
+            <!-- 6. 尺寸速度 -->
+            <div class="control-group">
+                <label class="control-label">字體大小: <span id="font-size-val">100</span>px</label>
+                <input type="range" id="font-size" min="20" max="400" value="100">
+            </div>
+
+            <div class="control-group" id="speed-group" style="display: none;">
+                <label class="control-label">捲動速度: <span id="speed-val">10</span>s</label>
+                <input type="range" id="marquee-speed" min="2" max="30" value="10">
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-fullscreen" onclick="toggleFullscreen()">⛶ 全螢幕</button>
+                <button class="btn btn-reset" onclick="resetDefault()">↺ 重置</button>
+                
+            </div>
+            <a href="../index.html" style="text-decoration: none; margin-top: 10px; display: block;">
+                <button class="btn" style="width: 100%; background-color: #333; color: #ccc;">
+                    🏠 回首頁
+                </button>
+            </a>
+            <div style="height: 30px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const stage = document.getElementById('display-stage');
+        const textDisplay = document.getElementById('display-text');
+        const flipWrapper = document.getElementById('flip-wrapper');
+        const panel = document.getElementById('controls-panel');
+        const overlay = document.getElementById('overlay');
+        const speedGroup = document.getElementById('speed-group');
+
+        // Inputs
+        const ui = {
+            text: document.getElementById('input-text'),
+            size: document.getElementById('font-size'),
+            speed: document.getElementById('marquee-speed'),
+            tColor: document.getElementById('text-color'),
+            bColor: document.getElementById('bg-color'),
+            
+            modeStatic: document.getElementById('mode-static'),
+            modeMarquee: document.getElementById('mode-marquee'),
+            
+            layoutH: document.getElementById('layout-h'),
+            layoutV: document.getElementById('layout-v'),
+            
+            // 移除 checkKaiti, btnKaiti
+            
+            checkBold: document.getElementById('check-font-bold'),
+            btnBold: document.getElementById('btn-font-bold'),
+            
+            btnFlipX: document.getElementById('btn-flip-x'),
+            btnFlipY: document.getElementById('btn-flip-y')
+        };
+
+        let state = { flipX: false, flipY: false };
+
+        // Themes
+        const themes = [
+            { name: "預設黑", bg: "#000000", text: "#ffffff" },
+            { name: "經典白", bg: "#ffffff", text: "#000000" },
+            { name: "警示黃", bg: "#FFD700", text: "#FF0000" },
+            { name: "駭客綠", bg: "#000000", text: "#00FF00" },
+            { name: "藍底白", bg: "#0000FF", text: "#ffffff" },
+            { name: "粉紅派", bg: "#FFC0CB", text: "#000000" }
+        ];
+
+        // Init Themes
+        const presetContainer = document.getElementById('preset-container');
+        themes.forEach(theme => {
+            const btn = document.createElement('div');
+            btn.className = 'preset-btn';
+            btn.style.backgroundColor = theme.bg;
+            const dot = document.createElement('div');
+            Object.assign(dot.style, {
+                width: '10px', height: '10px', borderRadius: '50%',
+                backgroundColor: theme.text, position: 'absolute',
+                top: '50%', left: '50%', transform: 'translate(-50%, -50%)'
+            });
+            btn.appendChild(dot);
+            btn.onclick = () => { ui.bColor.value = theme.bg; ui.tColor.value = theme.text; updateAppearance(); };
+            presetContainer.appendChild(btn);
+        });
+
+        // Panel
+        window.openPanel = () => { panel.classList.add('open'); overlay.classList.add('active'); };
+        window.closePanel = () => { panel.classList.remove('open'); overlay.classList.remove('active'); ui.text.blur(); };
+
+        // Logic
+        function updateState() {
+            // 1. Mode Class
+            const isMarquee = ui.modeMarquee.checked;
+            document.body.classList.toggle('mode-static', !isMarquee);
+            document.body.classList.toggle('mode-marquee', isMarquee);
+            speedGroup.style.display = isMarquee ? 'block' : 'none';
+
+            // 2. Layout Class
+            const isVertical = ui.layoutV.checked;
+            document.body.classList.toggle('layout-vertical', isVertical);
+
+            // 3. Reset Animation if Marquee (to apply new constraints)
+            if (isMarquee) {
+                textDisplay.style.animation = 'none';
+                textDisplay.offsetHeight; // trigger reflow
+                textDisplay.style.animation = 'marquee-scroll linear infinite';
+                textDisplay.style.animationDuration = ui.speed.value + 's';
+            } else {
+                textDisplay.style.animation = 'none';
+            }
+        }
+
+        function updateAppearance() {
+            // Colors
+            stage.style.backgroundColor = ui.bColor.value;
+            textDisplay.style.color = ui.tColor.value;
+            
+            // Fonts
+            // 移除標楷體邏輯
+            const isBold = ui.checkBold.checked;
+            textDisplay.style.fontWeight = isBold ? 'bold' : 'normal';
+            ui.btnBold.classList.toggle('active', isBold);
+
+            // Size
+            textDisplay.style.fontSize = ui.size.value + 'px';
+            document.getElementById('font-size-val').textContent = ui.size.value;
+            
+            // Speed
+            textDisplay.style.animationDuration = ui.speed.value + 's';
+            document.getElementById('speed-val').textContent = ui.speed.value;
+        }
+
+        // Listeners
+        ui.text.addEventListener('input', (e) => textDisplay.innerText = e.target.value || ' ');
+        
+        [ui.modeStatic, ui.modeMarquee, ui.layoutH, ui.layoutV].forEach(el => 
+            el.addEventListener('change', updateState));
+
+        // 移除 ui.checkKaiti 監聽
+        ui.checkBold.addEventListener('change', updateAppearance);
+
+        [ui.tColor, ui.bColor, ui.size, ui.speed].forEach(el => 
+            el.addEventListener('input', updateAppearance));
+
+        // Flip Logic
+        window.toggleFlip = (axis) => {
+            if (axis === 'x') { state.flipX = !state.flipX; ui.btnFlipX.classList.toggle('active', state.flipX); }
+            else { state.flipY = !state.flipY; ui.btnFlipY.classList.toggle('active', state.flipY); }
+            
+            const scaleX = state.flipX ? -1 : 1;
+            const scaleY = state.flipY ? -1 : 1;
+            flipWrapper.style.transform = `scale(${scaleX}, ${scaleY})`;
+        };
+
+        window.toggleFullscreen = () => {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+            else if (document.exitFullscreen) document.exitFullscreen();
+            closePanel();
+        };
+
+        window.resetDefault = () => {
+            ui.text.value = "請輸入文字"; textDisplay.innerText = "請輸入文字";
+            ui.modeStatic.checked = true; ui.layoutH.checked = true;
+            // 移除 ui.checkKaiti.checked
+            ui.checkBold.checked = false;
+            ui.size.value = 100; ui.speed.value = 10;
+            ui.bColor.value = "#000000"; ui.tColor.value = "#ffffff";
+            state.flipX = false; state.flipY = false;
+            
+            // UI Reset
+            ui.btnFlipX.classList.remove('active'); ui.btnFlipY.classList.remove('active');
+            flipWrapper.style.transform = 'scale(1,1)';
+            
+            updateState();
+            updateAppearance();
+        };
+
+        // Init
+        updateState();
+        updateAppearance();
+
+    </script>
+</body>
+</html>
