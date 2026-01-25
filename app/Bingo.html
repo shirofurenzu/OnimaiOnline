@@ -2,33 +2,65 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>賓果大挑戰</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>賓果大挑戰 - V20 修復刪除功能版</title>
     
-    <!-- 引入 React 和 ReactDOM -->
+    <!-- 引入 React 18 -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- 引入 Babel 用於解析 JSX -->
+    <!-- 引入 Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        /* 自定義捲軸樣式 */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        /* 基礎設置 */
+        body { 
+            -webkit-tap-highlight-color: transparent; 
+            user-select: none; 
+            -webkit-user-select: none;
+            touch-action: pan-y;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f5f9;
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        
+        /* 拖曳手把 */
+        .drag-handle {
+            cursor: grab;
+            touch-action: none; 
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
+        .drag-handle:active { cursor: grabbing; color: #4f46e5; }
+
+        /* 拖曳中的項目樣式 */
+        .task-row.is-dragging {
+            background-color: #eff6ff;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 2px solid #6366f1;
+            transform: scale(1.02);
+            z-index: 50;
+            position: relative;
+            opacity: 0.95;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+
+        input[type="text"], input[type="number"] { user-select: text; -webkit-user-select: text; }
+        
+        /* 隱藏原生數字輸入框的箭頭 (因為我們自己做了按鈕) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
         }
     </style>
 </head>
@@ -36,9 +68,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- 圖示元件定義 ---
+        // --- 圖示元件 ---
         const IconBase = ({ children, className, ...props }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
         );
@@ -50,6 +82,7 @@
         const Dices = (props) => <IconBase {...props}><rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></IconBase>;
         const Dumbbell = (props) => <IconBase {...props}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconBase>;
         const Plus = (props) => <IconBase {...props}><path d="M5 12h14"/><path d="M12 5v14"/></IconBase>;
+        const Minus = (props) => <IconBase {...props}><path d="M5 12h14"/></IconBase>;
         const Trash2 = (props) => <IconBase {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></IconBase>;
         const X = (props) => <IconBase {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></IconBase>;
         const Edit2 = (props) => <IconBase {...props}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></IconBase>;
@@ -63,833 +96,739 @@
         const Play = (props) => <IconBase {...props}><polygon points="5 3 19 12 5 21 5 3"/></IconBase>;
         const ClipboardList = (props) => <IconBase {...props}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconBase>;
+        const Volume2 = (props) => <IconBase {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></IconBase>;
+        const VolumeX = (props) => <IconBase {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconBase>;
+        const GripVertical = (props) => <IconBase {...props}><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></IconBase>;
+        const Sun = (props) => <IconBase {...props}><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></IconBase>;
 
         // --- 預設資料 ---
         const DEFAULT_LISTS = [
             {
                 id: 'default-exercise',
                 name: '💪 運動小挑戰',
-                tasks: [
-                "深蹲 10 次", "平板支撐 20 秒", "開合跳 15 下", "原地踏步 30 秒", 
-                "伏地挺身 5 次", "維持單腳站立 10 秒", "仰臥起坐 5 次", "弓箭步各 5 次",
-                "伸展手臂 10 秒", "高抬腿 20 下"
-                ]
+                tasks: [ "深蹲 10 次", "平板支撐 20 秒", "開合跳 15 下", "原地踏步 30 秒", "伏地挺身 5 次", "維持單腳站立 10 秒", "仰臥起坐 5 次", "弓箭步各 5 次", "伸展手臂 10 秒", "高抬腿 20 下" ]
             },
             {
                 id: 'default-fun',
                 name: '🤪 趣味小挑戰',
-                tasks: [
-                "誇獎對手一句", "唱一首歌的副歌", "做個鬼臉", "大笑三聲", 
-                "用屁股寫字", "學貓叫三聲", "說一個冷笑話", "模仿一種動物",
-                "向左邊的人比愛心", "自拍一張醜照"
-                ]
+                tasks: [ "誇獎對手一句", "唱一首歌的副歌", "做個鬼臉", "大笑三聲", "用屁股寫字", "學貓叫三聲", "說一個冷笑話", "模仿一種動物", "向左邊的人比愛心", "自拍一張醜照" ]
             }
         ];
 
-        // --- 主程式 ---
+        // --- 音效引擎 ---
+        let audioCtx = null;
+        const playAlertSound = () => {
+            try {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) audioCtx = new AudioContext();
+                }
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                if (!audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.15); 
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            } catch (e) { console.error("Audio failed", e); }
+        };
+
         const BingoGame = () => {
+            // State
             const [gridSize, setGridSize] = useState(5);
             const [gameState, setGameState] = useState('setup'); 
-            
-            // 限時模式設定
             const [isTimeLimitMode, setIsTimeLimitMode] = useState(false);
-            const [timeLimitSetting, setTimeLimitSetting] = useState(300); 
+            const [timeLimitSetting, setTimeLimitSetting] = useState(300);
             const [isPaused, setIsPaused] = useState(false); 
-            
-            // 遊戲數據
+            const [enableSound, setEnableSound] = useState(true);
+            const [soundThreshold, setSoundThreshold] = useState(30); 
+            const [keepScreenOn, setKeepScreenOn] = useState(false);
+            const [deletingListId, setDeletingListId] = useState(null); // V20: 新增刪除確認狀態
+
             const [board, setBoard] = useState([]);
             const [markedIndices, setMarkedIndices] = useState(new Set());
             const [winLines, setWinLines] = useState([]);
             const [taskHistory, setTaskHistory] = useState({ completed: [], failed: [] });
-
-            // 計時器 (回合倒數)
             const [timeLeft, setTimeLeft] = useState(300);
-            const timerRef = useRef(null);
-
-            // 總遊戲時間計時器 (Ref 追蹤)
-            const gameStartTimeRef = useRef(0);
-            const totalPausedTimeRef = useRef(0);
-            const pauseStartRef = useRef(0);
-
-            // 任務模式
             const [isTaskMode, setIsTaskMode] = useState(false);
             const [taskLists, setTaskLists] = useState(DEFAULT_LISTS);
             const [activeListId, setActiveListId] = useState('default-exercise');
-            
-            // UI 狀態
             const [view, setView] = useState('main'); 
             const [editingList, setEditingList] = useState(null);
             const [newTaskInput, setNewTaskInput] = useState("");
-            const [showResult, setShowResult] = useState(false); // 顯示成果 Modal
-
-            // 進行中的任務
+            const [editingTaskIndex, setEditingTaskIndex] = useState(null); 
+            const [editingTaskText, setEditingTaskText] = useState(""); 
+            const [showResult, setShowResult] = useState(false); 
             const [activeTask, setActiveTask] = useState(null); 
             const [pendingMarkIndex, setPendingMarkIndex] = useState(null);
+            const [draggingIndex, setDraggingIndex] = useState(null); 
+            
+            // Refs
+            const timerRef = useRef(null);
+            const gameStartTimeRef = useRef(0);
+            const totalPausedTimeRef = useRef(0);
+            const pauseStartRef = useRef(0);
+            const dragItemRef = useRef(null); 
+            const itemsRef = useRef([]); 
+            const wakeLockRef = useRef(null); // Wake Lock
 
-            // 初始化與讀取存檔
+            // State Refs (解決 Timer 閉包問題)
+            const activeTaskRef = useRef(activeTask);
+            const markedIndicesRef = useRef(markedIndices);
+            const isTaskModeRef = useRef(isTaskMode);
+            const taskListsRef = useRef(taskLists);
+            const activeListIdRef = useRef(activeListId);
+            const timeLimitSettingRef = useRef(timeLimitSetting);
+            const isTimeLimitModeRef = useRef(isTimeLimitMode);
+
+            // Sync Refs
+            useEffect(() => { activeTaskRef.current = activeTask; }, [activeTask]);
+            useEffect(() => { markedIndicesRef.current = markedIndices; }, [markedIndices]);
+            useEffect(() => { isTaskModeRef.current = isTaskMode; }, [isTaskMode]);
+            useEffect(() => { taskListsRef.current = taskLists; }, [taskLists]);
+            useEffect(() => { activeListIdRef.current = activeListId; }, [activeListId]);
+            useEffect(() => { timeLimitSettingRef.current = timeLimitSetting; }, [timeLimitSetting]);
+            useEffect(() => { isTimeLimitModeRef.current = isTimeLimitMode; }, [isTimeLimitMode]);
+
+            // Initialization
             useEffect(() => {
-                const savedData = localStorage.getItem('bingoTaskData');
-                if (savedData) {
+                const saved = localStorage.getItem('bingoTaskData');
+                if (saved) {
                     try {
-                        const parsed = JSON.parse(savedData);
-                        if (parsed.taskLists && Array.isArray(parsed.taskLists)) {
-                        setTaskLists(parsed.taskLists);
-                        setActiveListId(parsed.activeListId || parsed.taskLists[0]?.id);
+                        const parsed = JSON.parse(saved);
+                        if (parsed.taskLists) {
+                            setTaskLists(parsed.taskLists);
+                            setActiveListId(parsed.activeListId || parsed.taskLists[0]?.id);
                         }
-                    } catch (e) { console.error("讀取失敗", e); }
-                } else {
-                    const oldLegacyTasks = localStorage.getItem('bingoTasks');
-                    if (oldLegacyTasks) {
-                        try {
-                        const oldTasks = JSON.parse(oldLegacyTasks);
-                        const migratedList = { id: 'migrated-legacy', name: '📂 我的舊任務', tasks: oldTasks };
-                        setTaskLists([migratedList, ...DEFAULT_LISTS]);
-                        setActiveListId('migrated-legacy');
-                        } catch (e) { /* ignore */ }
-                    }
+                    } catch(e) {}
                 }
             }, []);
 
             useEffect(() => {
-                const dataToSave = { taskLists, activeListId };
-                localStorage.setItem('bingoTaskData', JSON.stringify(dataToSave));
+                localStorage.setItem('bingoTaskData', JSON.stringify({ taskLists, activeListId }));
             }, [taskLists, activeListId]);
 
-            // 暫停時間追蹤
+            // Wake Lock Effect
+            useEffect(() => {
+                const requestWakeLock = async () => {
+                    if (keepScreenOn && gameState === 'playing' && 'wakeLock' in navigator) {
+                        try {
+                            if (!wakeLockRef.current) {
+                                wakeLockRef.current = await navigator.wakeLock.request('screen');
+                            }
+                        } catch (err) {
+                            console.log('Wake Lock Error:', err);
+                        }
+                    } else if ((!keepScreenOn || gameState !== 'playing') && wakeLockRef.current) {
+                        try {
+                            await wakeLockRef.current.release();
+                            wakeLockRef.current = null;
+                        } catch (err) {
+                            console.log('Wake Lock Release Error:', err);
+                        }
+                    }
+                };
+                
+                requestWakeLock();
+
+                const handleVisibilityChange = async () => {
+                    if (document.visibilityState === 'visible' && keepScreenOn && gameState === 'playing') {
+                        // Re-acquire lock when app comes back to foreground
+                        try {
+                            if (!wakeLockRef.current) {
+                                wakeLockRef.current = await navigator.wakeLock.request('screen');
+                            }
+                        } catch (err) {}
+                    }
+                };
+
+                document.addEventListener('visibilitychange', handleVisibilityChange);
+                return () => {
+                    document.removeEventListener('visibilitychange', handleVisibilityChange);
+                    if (wakeLockRef.current) wakeLockRef.current.release().catch(()=>{});
+                };
+            }, [keepScreenOn, gameState]);
+
             useEffect(() => {
                 if (isPaused) {
                     pauseStartRef.current = Date.now();
                 } else if (pauseStartRef.current > 0) {
-                    // 從暫停恢復，累加暫停時間
                     totalPausedTimeRef.current += (Date.now() - pauseStartRef.current);
                     pauseStartRef.current = 0;
                 }
             }, [isPaused]);
 
-            // 回合倒數計時器邏輯
-            useEffect(() => {
-                if (gameState !== 'playing' || !isTimeLimitMode || winLines.length >= 5 || isPaused) {
-                    if (timerRef.current) clearInterval(timerRef.current);
+            // === 核心邏輯 (定義在 Timer useEffect 之前) ===
+
+            const handleSystemPick = useCallback((targetIndex) => {
+                if(isTaskModeRef.current) {
+                    const list = taskListsRef.current.find(l => l.id === activeListIdRef.current);
+                    const tasks = list ? list.tasks : [];
+                    if(tasks.length > 0) {
+                        const t = tasks[Math.floor(Math.random() * tasks.length)];
+                        setActiveTask(t);
+                        setPendingMarkIndex(targetIndex);
+                    } else {
+                        setMarkedIndices(prev => new Set(prev).add(targetIndex));
+                    }
+                } else {
+                    setMarkedIndices(prev => new Set(prev).add(targetIndex));
+                }
+            }, []);
+
+            const triggerMarking = useCallback((index) => {
+                if(isPaused) return;
+                
+                if(markedIndicesRef.current.has(index)) {
+                    setMarkedIndices(prev => {
+                        const next = new Set(prev);
+                        next.delete(index);
+                        return next;
+                    });
                     return;
                 }
+                
+                if(isTimeLimitModeRef.current) setTimeLeft(timeLimitSettingRef.current);
+                handleSystemPick(index);
+            }, [isPaused, handleSystemPick]);
 
+            const handleAutoPickOnTimeout = useCallback(() => {
+                const currentTask = activeTaskRef.current;
+                
+                if (currentTask) {
+                    setTaskHistory(prev => ({ ...prev, failed: [...prev.failed, currentTask + ' (超時)'] }));
+                }
+                setActiveTask(null);
+                setPendingMarkIndex(null);
+                
+                const total = gridSize * gridSize;
+                const currentMarked = markedIndicesRef.current;
+                const unMarked = [];
+                for(let i=0; i<total; i++) {
+                    if(!currentMarked.has(i)) unMarked.push(i);
+                }
+                
+                if(unMarked.length > 0) {
+                    const target = unMarked[Math.floor(Math.random() * unMarked.length)];
+                    handleSystemPick(target);
+                }
+            }, [gridSize, handleSystemPick]);
+
+            // Timer Effect
+            useEffect(() => {
+                if (gameState !== 'playing' || !isTimeLimitMode || winLines.length >= 5 || isPaused) {
+                    clearInterval(timerRef.current);
+                    return;
+                }
                 timerRef.current = setInterval(() => {
-                    setTimeLeft((prev) => {
+                    setTimeLeft(prev => {
+                        if (enableSound && prev === soundThreshold && prev > 1) {
+                            playAlertSound();
+                        }
                         if (prev <= 1) {
                             handleAutoPickOnTimeout();
-                            return 0; 
+                            return timeLimitSettingRef.current;
                         }
                         return prev - 1;
                     });
                 }, 1000);
+                return () => clearInterval(timerRef.current);
+            }, [gameState, isTimeLimitMode, winLines, isPaused, enableSound, soundThreshold, handleAutoPickOnTimeout]);
 
-                return () => {
-                    if (timerRef.current) clearInterval(timerRef.current);
-                };
-            }, [gameState, isTimeLimitMode, winLines, isPaused]);
-
-            // 遊戲邏輯
-            const initializeGame = (size) => {
-                const totalCells = size * size;
-                const numbers = Array.from({ length: totalCells }, (_, i) => i + 1);
-                for (let i = numbers.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+            const initializeGame = () => {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) audioCtx = new AudioContext();
                 }
-                setBoard(numbers);
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+                const total = gridSize * gridSize;
+                const nums = Array.from({length: total}, (_, i) => i+1);
+                for(let i=nums.length-1; i>0; i--) {
+                    const j = Math.floor(Math.random()*(i+1));
+                    [nums[i], nums[j]] = [nums[j], nums[i]];
+                }
+                setBoard(nums);
                 setMarkedIndices(new Set());
                 setWinLines([]);
-                setTaskHistory({ completed: [], failed: [] });
+                setTaskHistory({completed:[], failed:[]});
                 setGameState('playing');
                 setActiveTask(null);
                 setPendingMarkIndex(null);
                 setIsPaused(false);
                 setTimeLeft(timeLimitSetting);
                 setShowResult(false);
-
-                // 重置總時間計時器
                 gameStartTimeRef.current = Date.now();
                 totalPausedTimeRef.current = 0;
                 pauseStartRef.current = 0;
             };
 
+            // Check Win
             useEffect(() => {
-                if (gameState !== 'playing') return;
+                if(gameState!=='playing') return;
                 const lines = [];
-                const size = gridSize;
-                const checkLine = (indices) => {
-                    if (indices.every(idx => markedIndices.has(idx))) lines.push(indices);
-                };
-                for (let i = 0; i < size; i++) {
-                    const row = []; for (let j = 0; j < size; j++) row.push(i * size + j);
-                    checkLine(row);
+                const check = (arr) => { if(arr.every(i => markedIndices.has(i))) lines.push(arr); };
+                for(let i=0; i<gridSize; i++) {
+                    const row = []; for(let j=0; j<gridSize; j++) row.push(i*gridSize+j);
+                    check(row);
                 }
-                for (let i = 0; i < size; i++) {
-                    const col = []; for (let j = 0; j < size; j++) col.push(j * size + i);
-                    checkLine(col);
+                for(let i=0; i<gridSize; i++) {
+                    const col = []; for(let j=0; j<gridSize; j++) col.push(j*gridSize+i);
+                    check(col);
                 }
-                const diag1 = [], diag2 = [];
-                for (let i = 0; i < size; i++) {
-                    diag1.push(i * size + i);
-                    diag2.push(i * size + (size - 1 - i));
+                const d1=[], d2=[];
+                for(let i=0; i<gridSize; i++) {
+                    d1.push(i*gridSize+i);
+                    d2.push(i*gridSize+(gridSize-1-i));
                 }
-                checkLine(diag1);
-                checkLine(diag2);
+                check(d1); check(d2);
                 setWinLines(lines);
             }, [markedIndices, gridSize, gameState]);
 
-            const handleAutoPickOnTimeout = () => {
-                // 如果目前有任務正在進行，視為失敗
-                if (activeTask) {
-                    setTaskHistory(prev => ({ ...prev, failed: [...prev.failed, activeTask + ' (超時)'] }));
-                }
-
-                setActiveTask(null);
-                setPendingMarkIndex(null);
-                handleRandomPick(true); 
-            };
-
-            const triggerMarking = (index) => {
-                if (isPaused) return;
-
-                if (markedIndices.has(index)) {
-                    const newMarked = new Set(markedIndices);
-                    newMarked.delete(index);
-                    setMarkedIndices(newMarked);
-                    return;
-                }
-
-                if (isTimeLimitMode) {
-                    setTimeLeft(timeLimitSetting);
-                }
-
-                if (isTaskMode) {
-                    const currentList = taskLists.find(l => l.id === activeListId);
-                    const currentTasks = currentList ? currentList.tasks : [];
-                    if (currentTasks.length > 0) {
-                        const randomTask = currentTasks[Math.floor(Math.random() * currentTasks.length)];
-                        setActiveTask(randomTask);
-                        setPendingMarkIndex(index);
-                    } else {
-                        const newMarked = new Set(markedIndices);
-                        newMarked.add(index);
-                        setMarkedIndices(newMarked);
-                    }
-                } else {
-                    const newMarked = new Set(markedIndices);
-                    newMarked.add(index);
-                    setMarkedIndices(newMarked);
-                }
-            };
-
             const handleTaskComplete = () => {
-                if (activeTask) {
-                    setTaskHistory(prev => ({ ...prev, completed: [...prev.completed, activeTask] }));
-                }
-                if (pendingMarkIndex !== null) {
-                    const newMarked = new Set(markedIndices);
-                    newMarked.add(pendingMarkIndex);
-                    setMarkedIndices(newMarked);
-                }
+                if(activeTask) setTaskHistory(prev => ({...prev, completed: [...prev.completed, activeTask]}));
+                if(pendingMarkIndex !== null) setMarkedIndices(prev => new Set(prev).add(pendingMarkIndex));
                 setActiveTask(null);
                 setPendingMarkIndex(null);
             };
 
             const handleTaskAbandon = () => {
-                if (activeTask) {
-                    setTaskHistory(prev => ({ ...prev, failed: [...prev.failed, activeTask + ' (放棄)'] }));
-                }
+                if(activeTask) setTaskHistory(prev => ({...prev, failed: [...prev.failed, activeTask + ' (放棄)']}));
                 setActiveTask(null);
                 setPendingMarkIndex(null);
             };
 
-            const handleRandomPick = (isForced = false) => {
-                if (isPaused && !isForced) return;
+            const handleRandomPick = () => {
+                if(isPaused) return;
+                const total = gridSize*gridSize;
+                const unMarked = [];
+                for(let i=0; i<total; i++) if(!markedIndices.has(i)) unMarked.push(i);
+                if(unMarked.length===0) return;
+                const idx = unMarked[Math.floor(Math.random()*unMarked.length)];
+                triggerMarking(idx);
+            };
 
-                const totalCells = gridSize * gridSize;
-                const unMarkedIndices = [];
-                for (let i = 0; i < totalCells; i++) {
-                    if (!markedIndices.has(i)) unMarkedIndices.push(i);
-                }
-                if (unMarkedIndices.length === 0) return;
+            // --- List & Drag Logic ---
+            const startEditing = (list) => {
+                setEditingList({...list, tasks: list.tasks.map((t, i) => ({id: `task-${Date.now()}-${i}`, text: t}))});
+                setView('edit-list');
+                setEditingTaskIndex(null);
+                dragItemRef.current = null;
+                setDraggingIndex(null);
+            };
+
+            const saveEditingList = () => {
+                const clean = {...editingList, tasks: editingList.tasks.map(t => t.text)};
+                setTaskLists(prev => prev.map(l => l.id === clean.id ? clean : l));
+                setView('manage-lists');
+                setEditingList(null);
+            };
+
+            const createNewList = () => {
+                const n={id:'c-'+Date.now(), name:'新列表', tasks:[]};
+                setTaskLists([...taskLists, n]);
+                setEditingList({...n, tasks:[]});
+                setView('edit-list');
+            };
+
+            // V20: 新的刪除邏輯
+            const confirmDeleteList = () => {
+                if (!deletingListId) return;
                 
-                const randomIndex = Math.floor(Math.random() * unMarkedIndices.length);
-                const targetIndex = unMarkedIndices[randomIndex];
+                const idToDelete = deletingListId;
+                const newLists = taskLists.filter(x => x.id !== idToDelete);
+                setTaskLists(newLists);
 
-                triggerMarking(targetIndex);
+                // 如果刪除的是當前選中的列表，切換到第一個可用的列表
+                if (activeListId === idToDelete) {
+                    if (newLists.length > 0) {
+                        setActiveListId(newLists[0].id);
+                    } else {
+                        setActiveListId(''); 
+                    }
+                }
+                
+                setDeletingListId(null);
+            };
+
+            const handleGlobalMove = (e) => {
+                if (dragItemRef.current === null) return;
+                const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+                if (!clientY) return;
+
+                const currentDragIndex = dragItemRef.current;
+                let targetIndex = -1;
+                
+                for (let i = 0; i < itemsRef.current.length; i++) {
+                    const node = itemsRef.current[i];
+                    if (!node) continue;
+                    const rect = node.getBoundingClientRect();
+                    if (clientY >= rect.top - 5 && clientY <= rect.bottom + 5) {
+                        targetIndex = i;
+                        break;
+                    }
+                }
+
+                if (targetIndex !== -1 && targetIndex !== currentDragIndex) {
+                    setEditingList(prev => {
+                        const newTasks = [...prev.tasks];
+                        const [movedItem] = newTasks.splice(currentDragIndex, 1);
+                        newTasks.splice(targetIndex, 0, movedItem);
+                        return { ...prev, tasks: newTasks };
+                    });
+                    dragItemRef.current = targetIndex;
+                    setDraggingIndex(targetIndex);
+                }
+            };
+
+            const handleGlobalUp = () => {
+                dragItemRef.current = null;
+                setDraggingIndex(null);
+                window.removeEventListener('mousemove', handleGlobalMove);
+                window.removeEventListener('mouseup', handleGlobalUp);
+                window.removeEventListener('touchmove', handleGlobalMove);
+                window.removeEventListener('touchend', handleGlobalUp);
+                document.body.style.userSelect = '';
+            };
+
+            const handleDragStart = (e, index) => {
+                if (e.button === 2) return; 
+                if (e.type === 'mousedown') e.preventDefault(); 
+                dragItemRef.current = index;
+                setDraggingIndex(index);
+                document.body.style.userSelect = 'none';
+                window.addEventListener('mousemove', handleGlobalMove);
+                window.addEventListener('mouseup', handleGlobalUp);
+                window.addEventListener('touchmove', handleGlobalMove, { passive: false });
+                window.addEventListener('touchend', handleGlobalUp);
+            };
+
+            const addTaskToEditing = () => {
+                if(newTaskInput.trim()){
+                    setEditingList({...editingList, tasks:[...editingList.tasks, {id:Date.now(), text:newTaskInput.trim()}]});
+                    setNewTaskInput('');
+                }
+            };
+
+            const removeTaskFromEditing = (idx) => {
+                setEditingList({...editingList, tasks: editingList.tasks.filter((_, i) => i !== idx)});
+            };
+
+            const saveTaskEdit = (idx) => {
+                if(!editingTaskText.trim()) return;
+                const newTasks = [...editingList.tasks];
+                newTasks[idx].text = editingTaskText.trim();
+                setEditingList({...editingList, tasks: newTasks});
+                setEditingTaskIndex(null);
+            };
+
+            const formatTime = (s) => {
+                if (isNaN(s)) return "0:00";
+                const m = Math.floor(s/60);
+                const secs = Math.floor(s%60);
+                return `${m}:${secs<10?'0':''}${secs}`;
+            };
+            
+            const getTotalGameTime = () => {
+                const now = Date.now();
+                let p = totalPausedTimeRef.current + (isPaused && pauseStartRef.current ? now - pauseStartRef.current : 0);
+                return Math.max(0, Math.floor((now - gameStartTimeRef.current - p)/1000));
+            };
+
+            const handleExport = () => {
+                const txt = `賓果成果\n日期:${new Date().toLocaleString()}\n時間:${formatTime(getTotalGameTime())}\n連線:${winLines.length}\n\n已完成:\n${taskHistory.completed.join('\n')}\n\n未完成:\n${taskHistory.failed.join('\n')}`;
+                const blob = new Blob([txt], {type:'text/plain'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href=url; a.download='bingo.txt'; a.click();
             };
 
             const isCellInWinLine = (index) => winLines.some(line => line.includes(index));
 
-            // CRUD & Utils
-            const createNewList = () => {
-                const newList = { id: `custom-${Date.now()}`, name: '新任務列表', tasks: [] };
-                setTaskLists([...taskLists, newList]);
-                startEditing(newList);
-            };
-            const deleteList = (listId) => {
-                if (confirm('確定要刪除這個列表嗎？')) {
-                    const newLists = taskLists.filter(l => l.id !== listId);
-                    setTaskLists(newLists);
-                    if (activeListId === listId && newLists.length > 0) setActiveListId(newLists[0].id);
-                }
-            };
-            const startEditing = (list) => {
-                setEditingList(JSON.parse(JSON.stringify(list)));
-                setView('edit-list');
-                setNewTaskInput("");
-            };
-            const saveEditingList = () => {
-                setTaskLists(taskLists.map(l => l.id === editingList.id ? editingList : l));
-                setView('manage-lists');
-                setEditingList(null);
-            };
-            const addTaskToEditing = () => {
-                if (newTaskInput.trim()) {
-                    setEditingList({ ...editingList, tasks: [...editingList.tasks, newTaskInput.trim()] });
-                    setNewTaskInput("");
-                }
-            };
-            const removeTaskFromEditing = (idx) => {
-                setEditingList({ ...editingList, tasks: editingList.tasks.filter((_, i) => i !== idx) });
-            };
-            const formatTime = (seconds) => {
-                const m = Math.floor(seconds / 60);
-                const s = Math.floor(seconds % 60);
-                return `${m}:${s < 10 ? '0' : ''}${s}`;
-            };
-            
-            // 計算目前遊戲總時間
-            const getTotalGameTime = () => {
-                const now = Date.now();
-                let currentPauseDuration = 0;
-                if (isPaused && pauseStartRef.current > 0) {
-                    currentPauseDuration = now - pauseStartRef.current;
-                }
-                const totalDurationMs = now - gameStartTimeRef.current - totalPausedTimeRef.current - currentPauseDuration;
-                return Math.max(0, Math.floor(totalDurationMs / 1000));
+            // Helper to update time
+            const adjustTime = (delta) => {
+                const newTime = Math.max(3, timeLimitSetting + delta);
+                setTimeLimitSetting(newTime);
             };
 
-            // 匯出功能
-            const handleExport = () => {
-                const content = `
-賓果大挑戰 - 本局成果統計
-------------------------
-日期: ${new Date().toLocaleString()}
-總時間: ${formatTime(getTotalGameTime())}
-連線數: ${winLines.length}
-
-[已完成任務] (${taskHistory.completed.length})
-${taskHistory.completed.map((t, i) => `${i + 1}. ${t}`).join('\n')}
-
-[未完成/放棄] (${taskHistory.failed.length})
-${taskHistory.failed.map((t, i) => `${i + 1}. ${t}`).join('\n')}
-`.trim();
-
-                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `bingo-result-${Date.now()}.txt`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-
-            // --- Render ---
             return (
                 <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col items-center py-8 px-4 font-sans relative">
-                
-                <header className="mb-8 text-center">
-                    <h1 className="text-4xl font-bold text-slate-900 mb-2 tracking-tight flex items-center justify-center gap-3">
-                    <Grid3X3 className="w-8 h-8 text-indigo-600" />
-                    數字賓果
-                    </h1>
-                    <p className="text-slate-500">
-                    自定義大小 {isTaskMode && '+ 趣味任務'} {isTimeLimitMode && '+ 限時挑戰'}
-                    </p>
-                </header>
+                    <header className="mb-8 text-center">
+                        <h1 className="text-4xl font-bold text-slate-900 mb-2 flex justify-center items-center gap-3"><Grid3X3 className="w-8 h-8 text-indigo-600"/>數字賓果</h1>
+                        <p className="text-slate-500">自定義大小 {isTaskMode && '+ 趣味任務'} {isTimeLimitMode && '+ 限時挑戰'}</p>
+                    </header>
 
-                {/* 成果 Modal (優化排版：最大寬度與高度、多欄顯示) */}
-                {showResult && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md lg:max-w-4xl w-[95%] p-6 transform scale-100 animate-in zoom-in-95 duration-200 overflow-hidden flex flex-col max-h-[85vh]">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <ClipboardList className="w-6 h-6 text-indigo-600" />
-                                    本局成果統計
-                                </h3>
-                                <div className="flex items-center gap-2">
-                                    <button 
-                                        onClick={handleExport}
-                                        className="flex items-center gap-1 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold transition-colors"
-                                        title="匯出成文字檔"
-                                    >
-                                        <Download className="w-4 h-4" /> <span className="hidden sm:inline">匯出</span>
-                                    </button>
-                                    <button onClick={() => setShowResult(false)} className="p-1 rounded-full hover:bg-slate-100 text-slate-500">
-                                        <X className="w-6 h-6" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="bg-indigo-50 p-4 rounded-xl text-center">
-                                    <div className="text-sm text-slate-500 mb-1">連線數</div>
-                                    <div className="text-3xl font-bold text-indigo-600">{winLines.length}</div>
-                                </div>
-                                <div className="bg-slate-100 p-4 rounded-xl text-center">
-                                    <div className="text-sm text-slate-500 mb-1">總時間</div>
-                                    <div className="text-3xl font-bold text-slate-700">{formatTime(getTotalGameTime())}</div>
-                                </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                                <div>
-                                    <h4 className="text-sm font-bold text-green-600 mb-2 flex items-center gap-1">
-                                        <Check className="w-4 h-4" /> 已完成任務 ({taskHistory.completed.length})
-                                    </h4>
-                                    {taskHistory.completed.length > 0 ? (
-                                        <ul className="text-sm pl-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
-                                            {taskHistory.completed.map((t, i) => (
-                                                <li key={i} className="text-slate-700 py-1 border-b border-slate-50 last:border-0 break-words">{i + 1}. {t}</li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-xs text-slate-400 pl-1">尚無完成紀錄</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <h4 className="text-sm font-bold text-red-500 mb-2 flex items-center gap-1">
-                                        <X className="w-4 h-4" /> 未完成/放棄 ({taskHistory.failed.length})
-                                    </h4>
-                                    {taskHistory.failed.length > 0 ? (
-                                        <ul className="text-sm pl-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
-                                            {taskHistory.failed.map((t, i) => (
-                                                <li key={i} className="text-slate-500 py-1 border-b border-slate-50 last:border-0 break-words">{i + 1}. {t}</li>
-                                            ))}
-                                        </ul>
-                                    ) : (
-                                        <p className="text-xs text-slate-400 pl-1">尚無失敗紀錄</p>
-                                    )}
+                    {showResult && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md lg:max-w-4xl p-6 flex flex-col max-h-[85vh]">
+                                <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold">成果統計</h3><div className="flex gap-2"><button onClick={handleExport} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold"><Download className="w-4 h-4 inline"/> 匯出</button><button onClick={()=>setShowResult(false)} className="p-1 bg-slate-100 rounded-full"><X/></button></div></div>
+                                <div className="grid grid-cols-2 gap-4 mb-4 text-center"><div className="bg-indigo-50 p-4 rounded-xl"><div>連線數</div><div className="text-3xl font-bold text-indigo-600">{winLines.length}</div></div><div className="bg-slate-100 p-4 rounded-xl"><div>總時間</div><div className="text-3xl font-bold">{formatTime(getTotalGameTime())}</div></div></div>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4">
+                                    <div><h4 className="font-bold text-green-600">已完成 ({taskHistory.completed.length})</h4><ul className="text-sm pl-4 grid grid-cols-1 sm:grid-cols-2 gap-2">{taskHistory.completed.map((t,i)=><li key={i} className="border-b py-1">{i+1}. {t}</li>)}</ul></div>
+                                    <div><h4 className="font-bold text-red-500">未完成 ({taskHistory.failed.length})</h4><ul className="text-sm pl-4 grid grid-cols-1 sm:grid-cols-2 gap-2">{taskHistory.failed.map((t,i)=><li key={i} className="border-b py-1">{i+1}. {t}</li>)}</ul></div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* 任務 Modal */}
-                {activeTask && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm w-[95%] p-6 transform scale-100 animate-in zoom-in-95 duration-200 relative overflow-hidden max-h-[85vh] flex flex-col">
-                        {isTimeLimitMode && !isPaused && (
-                        <div className="absolute top-0 left-0 h-1.5 bg-red-500 transition-all duration-1000 ease-linear" 
-                                style={{ width: `${(timeLeft / timeLimitSetting) * 100}%` }} 
-                        />
-                        )}
-
-                        <div className="flex flex-col items-center text-center overflow-y-auto custom-scrollbar">
-                            <div className="w-16 h-16 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mb-4 shrink-0">
-                                <Dumbbell className="w-8 h-8" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-800 mb-2 shrink-0">任務挑戰！</h3>
-                            
-                            {isTimeLimitMode && (
-                                <div className={`font-bold text-sm mb-2 flex items-center gap-1 shrink-0 ${isPaused ? 'text-slate-400' : 'text-red-500 animate-pulse'}`}>
-                                <Timer className="w-4 h-4" /> 
-                                {isPaused ? '暫停中' : `剩餘 ${formatTime(timeLeft)}`}
-                                </div>
-                            )}
-
-                            <div className="bg-slate-50 p-4 rounded-xl w-full mb-6 border border-slate-100">
-                                <p className="text-2xl font-bold text-indigo-600 break-words">{activeTask}</p>
-                            </div>
-                            <p className="text-sm text-slate-500 mb-6 shrink-0">請在時間內完成任務並選取下一個格子！</p>
-                            
-                            <div className="flex gap-3 w-full shrink-0">
-                                <button 
-                                onClick={handleTaskAbandon}
-                                className="flex-1 py-3 px-4 rounded-xl font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
-                                disabled={isPaused}
-                                >
-                                放棄
-                                </button>
-                                <button 
-                                onClick={handleTaskComplete}
-                                className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={isPaused}
-                                >
-                                完成任務！
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-                )}
-
-                {gameState === 'setup' && view === 'main' && (
-                    <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-100 space-y-6">
-                    <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-slate-500" /> 遊戲設定
-                    </h2>
-
-                    <div>
-                        <label className="block text-base font-medium text-slate-700 mb-3">
-                        盤面大小: {gridSize} × {gridSize}
-                        </label>
-                        <input
-                        type="range" min="3" max="10" value={gridSize}
-                        onChange={(e) => setGridSize(parseInt(e.target.value))}
-                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                        />
-                        <div className="flex justify-between text-xs text-slate-400 mt-2 px-1">
-                        <span>3x3</span><span>10x10</span>
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-orange-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${isTimeLimitMode ? 'bg-orange-200 text-orange-700' : 'bg-slate-200 text-slate-500'}`}>
-                            <Timer className="w-5 h-5" />
-                            </div>
-                            <div className="text-left">
-                            <div className="font-bold text-slate-800">限時模式</div>
-                            <div className="text-xs text-slate-500">時間到自動隨機選號</div>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => setIsTimeLimitMode(!isTimeLimitMode)}
-                            className={`w-12 h-7 rounded-full transition-colors relative ${isTimeLimitMode ? 'bg-orange-500' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform ${isTimeLimitMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                        </div>
-
-                        {isTimeLimitMode && (
-                        <div className="animate-in slide-in-from-top-2">
-                            <label className="block text-sm font-medium text-slate-700 mb-2">每回合倒數時間 (秒)</label>
-                            <div className="flex items-center gap-3">
-                            <input
-                                type="number" 
-                                min="1" 
-                                value={timeLimitSetting}
-                                onChange={(e) => {
-                                const val = parseInt(e.target.value);
-                                if (!isNaN(val) && val > 0) setTimeLimitSetting(val);
-                                }}
-                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-center"
-                                placeholder="輸入秒數"
-                            />
-                            <span className="text-slate-500 font-bold whitespace-nowrap">秒</span>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-2">
-                            * 點擊格子後重置時間，需在時間內完成任務並選取下一格
-                            </p>
-                        </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${isTaskMode ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
-                            <Dumbbell className="w-5 h-5" />
-                            </div>
-                            <div className="text-left">
-                            <div className="font-bold text-slate-800">任務模式</div>
-                            <div className="text-xs text-slate-500">選號時跳出挑戰</div>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => setIsTaskMode(!isTaskMode)}
-                            className={`w-12 h-7 rounded-full transition-colors relative ${isTaskMode ? 'bg-indigo-600' : 'bg-slate-300'}`}
-                        >
-                            <div className={`absolute top-1 left-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform ${isTaskMode ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
-                        </div>
-
-                        {isTaskMode && (
-                        <div className="animate-in slide-in-from-top-2 space-y-3">
-                            <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">選擇任務列表</label>
-                            <div className="flex gap-2">
-                                <select 
-                                value={activeListId}
-                                onChange={(e) => setActiveListId(e.target.value)}
-                                className="flex-1 p-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                >
-                                {taskLists.map(list => (
-                                    <option key={list.id} value={list.id}>
-                                    {list.name} ({list.tasks.length})
-                                    </option>
-                                ))}
-                                </select>
-                                <button 
-                                onClick={() => setView('manage-lists')}
-                                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors"
-                                >
-                                <LayoutList className="w-5 h-5" />
-                                </button>
-                            </div>
-                            </div>
-                        </div>
-                        )}
-                    </div>
-
-                    {/* 設定頁面按鈕區 */}
-                    <div className="flex flex-col sm:flex-row gap-3 w-full">
-                        <button
-                            onClick={() => initializeGame(gridSize)}
-                            className="flex-[2] py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-lg transition-all shadow-lg shadow-indigo-200"
-                        >
-                            開始遊戲
-                        </button>
-                         <a
-                            href="../index.html"
-                            className="flex-1 py-3.5 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-lg transition-all"
-                        >
-                            回首頁
-                        </a>
-                    </div>
-                    </div>
-                )}
-
-                {gameState === 'setup' && (view === 'manage-lists' || view === 'edit-list') && (
-                    <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-100 h-[500px] flex flex-col">
-                    <div className="flex items-center gap-3 mb-6">
-                        <button 
-                        onClick={() => view === 'manage-lists' ? setView('main') : setView('manage-lists')}
-                        className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                        >
-                        <ChevronLeft className="w-6 h-6 text-slate-500" />
-                        </button>
-                        <h2 className="text-xl font-bold text-slate-800">{view === 'manage-lists' ? '管理列表' : '編輯列表'}</h2>
-                        {view === 'edit-list' && (
-                        <button onClick={saveEditingList} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700">
-                            <Save className="w-4 h-4" /> 儲存
-                        </button>
-                        )}
-                    </div>
-
-                    {view === 'manage-lists' ? (
-                        <>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
-                            {taskLists.map(list => (
-                            <div key={list.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                <FolderOpen className={`w-5 h-5 ${list.id === activeListId ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                <div>
-                                    <div className="font-bold text-slate-800 truncate">{list.name}</div>
-                                    <div className="text-xs text-slate-500">{list.tasks.length} 個任務</div>
-                                </div>
-                                </div>
-                                <div className="flex gap-2">
-                                <button onClick={() => startEditing(list)} className="p-2 bg-white text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-indigo-600">
-                                    <Edit2 className="w-4 h-4" />
-                                </button>
-                                {taskLists.length > 1 && (
-                                    <button onClick={() => deleteList(list.id)} className="p-2 bg-white text-slate-400 border border-slate-200 rounded-lg hover:bg-red-50 hover:text-red-500">
-                                    <Trash2 className="w-4 h-4" />
-                                    </button>
-                                )}
-                                </div>
-                            </div>
-                            ))}
-                        </div>
-                        <button onClick={createNewList} className="mt-6 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center justify-center gap-2">
-                            <Plus className="w-5 h-5" /> 建立新列表
-                        </button>
-                        </>
-                    ) : (
-                        <>
-                        <div className="mb-4 space-y-4">
-                            <input 
-                            type="text" value={editingList.name}
-                            onChange={(e) => setEditingList({...editingList, name: e.target.value})}
-                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            placeholder="列表名稱"
-                            />
-                            <div className="flex gap-2">
-                            <input
-                                type="text" value={newTaskInput}
-                                onChange={(e) => setNewTaskInput(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && addTaskToEditing()}
-                                placeholder="輸入任務內容..."
-                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                            <button onClick={addTaskToEditing} disabled={!newTaskInput.trim()} className="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 disabled:opacity-50">
-                                <Plus className="w-5 h-5" />
-                            </button>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                            {editingList.tasks.map((task, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                <span className="text-slate-700">{task}</span>
-                                <button onClick={() => removeTaskFromEditing(idx)} className="text-slate-300 hover:text-red-500 p-1">
-                                <X className="w-4 h-4" />
-                                </button>
-                            </div>
-                            ))}
-                        </div>
-                        </>
                     )}
-                    </div>
-                )}
-
-                {gameState === 'playing' && (
-                    <div className="w-full max-w-2xl flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    {/* 遊戲中狀態列 (優化版面擁擠問題) */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between w-full mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 gap-3 sm:gap-0">
-                        {/* 左側：獎盃與計時 */}
-                        <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-3 sm:gap-4">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                                <div className={`p-2 rounded-lg shrink-0 ${winLines.length > 0 ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}`}>
-                                    <Trophy className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <div className="text-xs text-slate-500 font-medium hidden md:block">連線數</div>
-                                    <div className="text-xl sm:text-2xl font-bold text-slate-800 tabular-nums">{winLines.length}<span className="text-sm font-normal text-slate-400 ml-1 md:hidden">條</span><span className="text-sm font-normal text-slate-400 ml-1 hidden md:inline">條</span></div>
+                    
+                    {/* V20: 刪除確認視窗 */}
+                    {deletingListId && (
+                        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-xl p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+                                <h3 className="text-lg font-bold mb-2 text-slate-900">確定要刪除嗎？</h3>
+                                <p className="text-slate-500 mb-6">刪除後將無法復原此列表。</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setDeletingListId(null)} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold transition-colors">取消</button>
+                                    <button onClick={confirmDeleteList} className="flex-1 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition-colors">刪除</button>
                                 </div>
                             </div>
-                            
-                            {isTimeLimitMode && (
-                                <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-4 border-l border-slate-200">
-                                <div className={`p-2 rounded-lg shrink-0 transition-colors ${
-                                    isPaused ? 'bg-slate-100 text-slate-500' : 
-                                    timeLeft < 10 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-orange-100 text-orange-600'
-                                }`}>
-                                    <Timer className="w-5 h-5" />
+                        </div>
+                    )}
+
+                    {activeTask && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center relative overflow-hidden">
+                                {isTimeLimitMode && !isPaused && (
+                                    <div className="absolute top-0 left-0 h-2 bg-red-500 transition-all ease-linear duration-1000" style={{width: `${(timeLeft/timeLimitSetting)*100}%`}} />
+                                )}
+                                <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4"><Dumbbell className="w-8 h-8 text-yellow-600"/></div>
+                                <h3 className="text-xl font-bold mb-2">任務挑戰！</h3>
+                                
+                                {isTimeLimitMode && (
+                                    <div className={`font-bold text-lg mb-4 flex items-center justify-center gap-2 ${isPaused ? 'text-slate-400' : 'text-red-500 animate-pulse'}`}>
+                                        <Timer className="w-5 h-5" /> 
+                                        {isPaused ? '暫停中' : `剩餘 ${formatTime(timeLeft)}`}
+                                    </div>
+                                )}
+
+                                <p className="text-2xl font-bold text-indigo-600 bg-slate-50 p-4 rounded-xl mb-6">{activeTask}</p>
+                                <div className="flex gap-3">
+                                    <button onClick={handleTaskAbandon} className="flex-1 py-3 rounded-xl bg-slate-100 font-bold text-slate-600" disabled={isPaused}>放棄</button>
+                                    <button onClick={handleTaskComplete} className="flex-1 py-3 rounded-xl bg-indigo-600 font-bold text-white" disabled={isPaused}>完成！</button>
                                 </div>
-                                <div>
-                                    <div className="text-xs text-slate-500 font-medium hidden md:block">剩餘</div>
-                                    <div className={`text-xl sm:text-2xl font-bold tabular-nums ${timeLeft < 10 && !isPaused ? 'text-red-600' : 'text-slate-800'}`}>
-                                    {formatTime(timeLeft)}
+                            </div>
+                        </div>
+                    )}
+
+                    {gameState === 'setup' && view === 'main' && (
+                        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl border border-slate-100 space-y-6">
+                            <h2 className="text-xl font-bold flex gap-2"><Settings/> 遊戲設定</h2>
+                            <div><label className="block mb-2 font-bold">盤面: {gridSize}x{gridSize}</label><input type="range" min="3" max="10" value={gridSize} onChange={e=>setGridSize(parseInt(e.target.value))} className="w-full"/></div>
+                            
+                            {/* V19 新增: 獨立的螢幕恆亮設定區塊 */}
+                            <div className="bg-slate-50 p-4 rounded-xl flex justify-between items-center border border-slate-100">
+                                <div className="flex gap-3 items-center">
+                                    <div className={`p-2 rounded-lg transition-colors ${keepScreenOn ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-200 text-slate-500'}`}><Sun className="w-5 h-5"/></div>
+                                    <div className="text-left">
+                                        <div className="font-bold text-slate-800">螢幕恆亮</div>
+                                        <div className="text-xs text-slate-500">遊戲中保持螢幕開啟</div>
                                     </div>
                                 </div>
-                                
-                                <button 
-                                    onClick={() => setIsPaused(!isPaused)}
-                                    className={`ml-1 p-1.5 rounded-full transition-all active:scale-95 border ${
-                                    isPaused 
-                                        ? 'bg-green-100 text-green-600 border-green-200 hover:bg-green-200' 
-                                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
-                                    }`}
-                                    title={isPaused ? "繼續" : "暫停"}
-                                >
-                                    {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}
+                                <button onClick={()=>setKeepScreenOn(!keepScreenOn)} className={`w-12 h-7 rounded-full relative transition ${keepScreenOn?'bg-yellow-400':'bg-slate-300'}`}>
+                                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all shadow-sm ${keepScreenOn?'left-6':'left-1'}`}/>
                                 </button>
-                                </div>
-                            )}
-                        </div>
-                        
-                        {/* 右側：功能按鈕群 (響應式隱藏文字) */}
-                        <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                        <button
-                            onClick={() => handleRandomPick()}
-                            disabled={markedIndices.size === gridSize * gridSize || activeTask !== null || isPaused}
-                            className="flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="隨機選號"
-                        >
-                            <Dices className="w-4 h-4" />
-                            {/* 隨機按鈕較重要，在中型螢幕就顯示文字 */}
-                            <span className="hidden md:inline">隨機</span>
-                        </button>
-                        <div className="w-px h-8 bg-slate-200 mx-0.5 hidden sm:block"></div>
-                        
-                        <button
-                            onClick={() => setShowResult(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors"
-                            title="查看成果"
-                        >
-                            <ClipboardList className="w-4 h-4" /> 
-                            {/* 次要按鈕在大型螢幕才顯示文字，避免擁擠 */}
-                            <span className="hidden lg:inline">成果</span>
-                        </button>
+                            </div>
 
-                        <button onClick={() => initializeGame(gridSize)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors" title="重置">
-                            <RotateCcw className="w-4 h-4" /> <span className="hidden lg:inline">重置</span>
-                        </button>
-                        <button onClick={() => setGameState('setup')} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors" title="設定">
-                            <Settings className="w-4 h-4" /> <span className="hidden lg:inline">設定</span>
-                        </button>
-                        </div>
-                    </div>
-                    
-                    {isTimeLimitMode && winLines.length < 5 && (
-                        <div className="w-full h-2 bg-slate-100 rounded-full mb-4 overflow-hidden">
-                        <div 
-                            className={`h-full transition-all ease-linear ${
-                                isPaused ? 'bg-slate-300' :
-                                timeLeft < 10 ? 'bg-red-500 duration-1000' : 'bg-orange-500 duration-1000'
-                            }`}
-                            style={{ width: `${(timeLeft / timeLimitSetting) * 100}%` }}
-                        />
+                            {/* 限時模式設定區塊 */}
+                            <div className="bg-orange-50 p-4 rounded-xl">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex gap-3 items-center">
+                                        <div className="p-2 rounded-lg bg-orange-200 text-orange-700"><Timer className="w-5 h-5"/></div>
+                                        <div className="text-left">
+                                            <div className="font-bold text-slate-800">限時模式</div>
+                                            <div className="text-xs text-slate-500">時間到自動隨機選號</div>
+                                        </div>
+                                    </div>
+                                    <button onClick={()=>setIsTimeLimitMode(!isTimeLimitMode)} className={`w-12 h-7 rounded-full relative transition ${isTimeLimitMode?'bg-orange-500':'bg-slate-300'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${isTimeLimitMode?'left-6':'left-1'}`}/></button>
+                                </div>
+                                {isTimeLimitMode && (
+                                    <div className="mt-4 space-y-4 animate-in slide-in-from-top-2 bg-white/50 p-3 rounded-lg border border-orange-100">
+                                        {/* 時間調整：按鈕 + 手動輸入 */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 mb-2 uppercase">每回合倒數時間</label>
+                                            <div className="flex gap-2 items-center">
+                                                {/* 分鐘 */}
+                                                <div className="flex-1 flex items-center bg-slate-100 rounded-lg p-1">
+                                                    <button onClick={() => adjustTime(-60)} className="p-2 text-slate-500 hover:bg-slate-200 rounded-md"><Minus className="w-4 h-4"/></button>
+                                                    <div className="flex-1 flex items-center justify-center relative">
+                                                        <input 
+                                                            type="number" 
+                                                            min="0"
+                                                            className="w-16 text-center font-bold text-lg bg-transparent outline-none p-0 appearance-none"
+                                                            value={Math.floor(timeLimitSetting/60)}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value) || 0;
+                                                                const secs = timeLimitSetting % 60;
+                                                                setTimeLimitSetting(Math.max(3, val * 60 + secs));
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                        />
+                                                        <span className="text-xs font-normal text-slate-400 ml-1">分</span>
+                                                    </div>
+                                                    <button onClick={() => adjustTime(60)} className="p-2 text-slate-500 hover:bg-slate-200 rounded-md"><Plus className="w-4 h-4"/></button>
+                                                </div>
+                                                <span className="text-slate-400 font-bold">:</span>
+                                                {/* 秒鐘 */}
+                                                <div className="flex-1 flex items-center bg-slate-100 rounded-lg p-1">
+                                                    <button onClick={() => adjustTime(-5)} className="p-2 text-slate-500 hover:bg-slate-200 rounded-md"><Minus className="w-4 h-4"/></button>
+                                                    <div className="flex-1 flex items-center justify-center relative">
+                                                        <input 
+                                                            type="number" 
+                                                            min="0"
+                                                            className="w-16 text-center font-bold text-lg bg-transparent outline-none p-0 appearance-none"
+                                                            value={timeLimitSetting % 60}
+                                                            onChange={(e) => {
+                                                                const val = parseInt(e.target.value) || 0;
+                                                                const mins = Math.floor(timeLimitSetting/60);
+                                                                setTimeLimitSetting(Math.max(3, mins * 60 + val));
+                                                            }}
+                                                            onFocus={(e) => e.target.select()}
+                                                        />
+                                                        <span className="text-xs font-normal text-slate-400 ml-1">秒</span>
+                                                    </div>
+                                                    <button onClick={() => adjustTime(5)} className="p-2 text-slate-500 hover:bg-slate-200 rounded-md"><Plus className="w-4 h-4"/></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* 音效設定 (V19: 移除螢幕恆亮，保留音效) */}
+                                        <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={()=>setEnableSound(!enableSound)} className={`p-1.5 rounded-lg transition-colors ${enableSound?'bg-orange-100 text-orange-600':'bg-slate-100 text-slate-400'}`}>{enableSound?<Volume2 className="w-4 h-4"/>:<VolumeX className="w-4 h-4"/>}</button>
+                                                {/* 可調整提示音秒數的介面 */}
+                                                <div className="flex items-center bg-slate-100 rounded-lg">
+                                                    <button onClick={() => setSoundThreshold(p => Math.max(5, p - 5))} disabled={!enableSound} className="px-2 py-1 text-slate-500 hover:text-indigo-600 disabled:opacity-50 text-xs font-bold">-</button>
+                                                    <span className={`text-xs font-bold w-12 text-center ${enableSound ? 'text-slate-600' : 'text-slate-400'}`}>剩 {soundThreshold} 秒</span>
+                                                    <button onClick={() => setSoundThreshold(p => p + 5)} disabled={!enableSound} className="px-2 py-1 text-slate-500 hover:text-indigo-600 disabled:opacity-50 text-xs font-bold">+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-slate-400">* 點擊格子後重置時間，需在時間內完成任務並選取下一格</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 任務模式設定區塊 */}
+                            <div className="bg-indigo-50 p-4 rounded-xl">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex gap-3 items-center">
+                                        <div className="p-2 rounded-lg bg-indigo-200 text-indigo-700"><Dumbbell className="w-5 h-5"/></div>
+                                        <div className="text-left">
+                                            <div className="font-bold text-slate-800">任務模式</div>
+                                            <div className="text-xs text-slate-500">選號時跳出挑戰</div>
+                                        </div>
+                                    </div>
+                                    <button onClick={()=>setIsTaskMode(!isTaskMode)} className={`w-12 h-7 rounded-full relative transition ${isTaskMode?'bg-indigo-600':'bg-slate-300'}`}><div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${isTaskMode?'left-6':'left-1'}`}/></button>
+                                </div>
+                                {isTaskMode && <div className="mt-4 flex gap-2"><select value={activeListId} onChange={e=>setActiveListId(e.target.value)} className="flex-1 p-2 border rounded"><option disabled value="">選擇列表</option>{taskLists.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select><button onClick={()=>setView('manage-lists')} className="p-2 bg-slate-200 rounded"><LayoutList/></button></div>}
+                            </div>
+                            <div className="flex gap-2"><button onClick={initializeGame} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">開始遊戲</button><a href="../index.html" className="flex-1 py-3 flex justify-center items-center bg-slate-100 font-bold rounded-xl text-slate-600">回首頁</a></div>
                         </div>
                     )}
 
-                    <div 
-                        className="grid gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl shadow-xl border border-slate-200 select-none relative"
-                        style={{
-                        gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
-                        width: '100%', maxWidth: '600px', aspectRatio: '1/1'
-                        }}
-                    >
-                        {isPaused && (
-                        <div className="absolute inset-0 z-20 bg-slate-100/90 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center animate-in fade-in">
-                            <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 flex flex-col items-center">
-                            <Pause className="w-12 h-12 text-slate-400 mb-2" />
-                            <span className="text-xl font-bold text-slate-600">遊戲暫停</span>
-                            <button 
-                                onClick={() => setIsPaused(false)}
-                                className="mt-4 px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
-                            >
-                                <Play className="w-4 h-4 fill-current" /> 繼續遊戲
-                            </button>
-                            </div>
-                        </div>
-                        )}
-
-                        {board.map((num, index) => {
-                        const isMarked = markedIndices.has(index);
-                        const isWin = isCellInWinLine(index);
-                        
-                        return (
-                            <div
-                            key={index}
-                            onClick={() => triggerMarking(index)}
-                            className={`
-                                relative flex items-center justify-center rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200
-                                text-base sm:text-xl md:text-2xl font-bold shadow-sm
-                                ${isPaused ? 'cursor-not-allowed' : ''}
-                                ${isWin 
-                                ? 'bg-yellow-400 text-white scale-105 z-10 ring-4 ring-yellow-200 shadow-yellow-200' 
-                                : isMarked 
-                                    ? 'bg-indigo-600 text-white scale-[0.98] ring-0 opacity-90' 
-                                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
-                                }
-                            `}
-                            >
-                            {num}
-                            {isMarked && !isWin && (
-                                <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                                <Check className="w-3/4 h-3/4 text-white" />
-                                </div>
-                            )}
-                            </div>
-                        );
-                        })}
-                    </div>
-
-                    {winLines.length >= 5 && (
-                        <div className="mt-8 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full font-bold shadow-lg animate-bounce">
-                        太強了！賓果大師！ ({winLines.length} 連線)
+                    {gameState === 'setup' && view === 'manage-lists' && (
+                        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl h-[500px] flex flex-col">
+                            <div className="flex items-center gap-2 mb-4"><button onClick={()=>setView('main')} className="p-1 hover:bg-slate-100 rounded"><ChevronLeft/></button><h2 className="text-xl font-bold">管理列表</h2></div>
+                            <div className="flex-1 overflow-y-auto space-y-2">{taskLists.map(l=><div key={l.id} className="p-3 border rounded-lg flex justify-between items-center"><div className="flex items-center gap-3 overflow-hidden"><FolderOpen className={`w-5 h-5 ${l.id===activeListId?'text-indigo-600':'text-slate-400'}`}/><div><div className="font-bold text-slate-800 truncate">{l.name}</div><div className="text-xs text-slate-500">{l.tasks.length} 個任務</div></div></div><div className="flex gap-1"><button onClick={()=>startEditing(l)} className="p-2 border rounded hover:bg-slate-50 text-indigo-600"><Edit2 className="w-4 h-4"/></button>{taskLists.length>1&&<button onClick={()=>setDeletingListId(l.id)} className="p-2 border rounded hover:bg-red-50 text-red-500"><Trash2 className="w-4 h-4"/></button>}</div></div>)}</div>
+                            <button onClick={createNewList} className="mt-4 w-full py-2 bg-slate-100 rounded-lg font-bold flex justify-center items-center gap-2"><Plus/> 新增列表</button>
                         </div>
                     )}
-                    </div>
-                )}
+
+                    {gameState === 'setup' && view === 'edit-list' && editingList && (
+                        <div className="w-full max-w-md bg-white p-6 rounded-2xl shadow-xl h-[600px] flex flex-col">
+                            <div className="flex items-center gap-2 mb-4"><button onClick={saveEditingList} className="p-1 hover:bg-slate-100 rounded"><ChevronLeft/></button><h2 className="text-xl font-bold">編輯列表</h2><button onClick={saveEditingList} className="ml-auto flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded text-sm font-bold"><Save className="w-4 h-4"/> 儲存</button></div>
+                            <div className="mb-4 space-y-2">
+                                <input className="w-full p-2 border rounded" value={editingList.name} onChange={e=>setEditingList({...editingList, name:e.target.value})} placeholder="列表名稱"/>
+                                <div className="flex gap-2"><input className="flex-1 p-2 border rounded" value={newTaskInput} onChange={e=>setNewTaskInput(e.target.value)} placeholder="新任務..." onKeyDown={e=>e.key==='Enter'&&addTaskToEditing()}/><button onClick={addTaskToEditing} className="p-2 bg-indigo-100 text-indigo-600 rounded"><Plus/></button></div>
+                            </div>
+                            
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1 pb-4 relative sortable-list">
+                                {editingList.tasks.map((task, idx) => (
+                                    <div 
+                                        key={task.id} 
+                                        ref={el => itemsRef.current[idx] = el}
+                                        className={`task-row flex items-center gap-2 p-3 bg-slate-50 rounded-lg transition-transform ${draggingIndex === idx ? 'is-dragging' : ''}`}
+                                    >
+                                        <div 
+                                            className="drag-handle text-slate-400 hover:text-indigo-600 p-2"
+                                            onMouseDown={(e) => handleDragStart(e, idx)}
+                                            onTouchStart={(e) => handleDragStart(e, idx)}
+                                        >
+                                            <GripVertical className="w-5 h-5 pointer-events-none" />
+                                        </div>
+                                        {editingTaskIndex === idx ? (
+                                            <div className="flex-1 flex gap-2"><input autoFocus className="flex-1 px-2 border rounded" value={editingTaskText} onChange={e=>setEditingTaskText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveTaskEdit(idx)} /><button onClick={()=>saveTaskEdit(idx)} className="text-green-600"><Check/></button></div>
+                                        ) : (
+                                            <span className="flex-1 truncate select-none">{task.text}</span>
+                                        )}
+                                        {editingTaskIndex !== idx && <div className="flex gap-1"><button onClick={()=>{setEditingTaskIndex(idx); setEditingTaskText(task.text)}} className="text-slate-300 hover:text-indigo-600"><Edit2 className="w-4 h-4"/></button><button onClick={()=>removeTaskFromEditing(idx)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4"/></button></div>}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {gameState === 'playing' && (
+                        <div className="w-full max-w-2xl flex flex-col items-center animate-in fade-in">
+                            <div className="w-full flex flex-col sm:flex-row justify-between items-center mb-6 bg-white p-3 rounded-xl shadow-sm gap-3 sm:gap-0">
+                                <div className="flex gap-4 items-center w-full sm:w-auto justify-between sm:justify-start">
+                                    <div className="flex items-center gap-2 sm:gap-3">
+                                        <div className={`p-2 rounded-lg shrink-0 ${winLines.length > 0 ? 'bg-yellow-100 text-yellow-600' : 'bg-slate-100 text-slate-500'}`}><Trophy className="w-5 h-5" /></div>
+                                        <div><div className="text-xs text-slate-500 font-medium hidden md:block">連線數</div><div className="text-xl sm:text-2xl font-bold text-slate-800 tabular-nums">{winLines.length}<span className="text-sm font-normal text-slate-400 ml-1 md:hidden">條</span><span className="text-sm font-normal text-slate-400 ml-1 hidden md:inline">條</span></div></div>
+                                    </div>
+                                    {isTimeLimitMode && (
+                                        <div className="flex items-center gap-2 sm:gap-3 pl-3 sm:pl-4 border-l border-slate-200">
+                                        <div className={`p-2 rounded-lg shrink-0 transition-colors ${isPaused ? 'bg-slate-100 text-slate-500' : timeLeft < 10 ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-orange-100 text-orange-600'}`}><Timer className="w-5 h-5" /></div>
+                                        <div><div className="text-xs text-slate-500 font-medium hidden md:block">剩餘</div><div className={`text-xl sm:text-2xl font-bold tabular-nums ${timeLeft < 10 && !isPaused ? 'text-red-600' : 'text-slate-800'}`}>{formatTime(timeLeft)}</div></div>
+                                        <button onClick={()=>setIsPaused(!isPaused)} className={`ml-1 p-1.5 rounded-full transition-all active:scale-95 border ${isPaused ? 'bg-green-100 text-green-600 border-green-200 hover:bg-green-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`} title={isPaused ? "繼續" : "暫停"}>{isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                    <button onClick={handleRandomPick} disabled={markedIndices.size === gridSize * gridSize || activeTask !== null || isPaused} className="flex items-center gap-2 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="隨機選號"><Dices className="w-4 h-4" /><span className="hidden md:inline">隨機</span></button>
+                                    <div className="w-px h-8 bg-slate-200 mx-0.5 hidden sm:block"></div>
+                                    <button onClick={()=>setShowResult(true)} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors" title="查看成果"><ClipboardList className="w-4 h-4" /><span className="hidden lg:inline">成果</span></button>
+                                    <button onClick={initializeGame} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors" title="重置"><RotateCcw className="w-4 h-4" /> <span className="hidden lg:inline">重置</span></button>
+                                    <button onClick={()=>setGameState('setup')} className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors" title="設定"><Settings className="w-4 h-4" /> <span className="hidden lg:inline">設定</span></button>
+                                </div>
+                            </div>
+                            {isTimeLimitMode && winLines.length < 5 && (
+                                <div className="w-full h-2 bg-slate-100 rounded-full mb-4 overflow-hidden">
+                                <div className={`h-full transition-all ease-linear ${isPaused ? 'bg-slate-300' : timeLeft < 10 ? 'bg-red-500 duration-1000' : 'bg-orange-500 duration-1000'}`} style={{ width: `${(timeLeft / timeLimitSetting) * 100}%` }} />
+                                </div>
+                            )}
+                            <div className="grid gap-2 sm:gap-3 p-3 sm:p-4 bg-white rounded-2xl shadow-xl border border-slate-200 select-none relative" style={{ gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`, width: '100%', maxWidth: '600px', aspectRatio: '1/1' }}>
+                                {isPaused && (
+                                <div className="absolute inset-0 z-20 bg-slate-100/90 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center animate-in fade-in">
+                                    <div className="bg-white p-6 rounded-2xl shadow-lg border border-slate-200 flex flex-col items-center">
+                                    <Pause className="w-12 h-12 text-slate-400 mb-2" />
+                                    <span className="text-xl font-bold text-slate-600">遊戲暫停</span>
+                                    <button onClick={() => setIsPaused(false)} className="mt-4 px-6 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-bold transition-colors flex items-center gap-2"><Play className="w-4 h-4 fill-current" /> 繼續遊戲</button>
+                                    </div>
+                                </div>
+                                )}
+                                {board && board.length > 0 && board.map((num, index) => {
+                                const isMarked = markedIndices.has(index);
+                                const isWin = isCellInWinLine(index);
+                                return (
+                                    <div key={index} onClick={() => triggerMarking(index)} className={`relative flex items-center justify-center rounded-lg sm:rounded-xl cursor-pointer transition-all duration-200 text-base sm:text-xl md:text-2xl font-bold shadow-sm ${isPaused ? 'cursor-not-allowed' : ''} ${isWin ? 'bg-yellow-400 text-white scale-105 z-10 ring-4 ring-yellow-200 shadow-yellow-200' : isMarked ? 'bg-indigo-600 text-white scale-[0.98] ring-0 opacity-90' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'}`}>
+                                    {num}
+                                    {isMarked && !isWin && <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none"><Check className="w-3/4 h-3/4 text-white" /></div>}
+                                    </div>
+                                );
+                                })}
+                            </div>
+                            {winLines.length >= 5 && (
+                                <div className="mt-8 px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full font-bold shadow-lg animate-bounce">太強了！賓果大師！ ({winLines.length} 連線)</div>
+                            )}
+                        </div>
+                    )}
                 </div>
             );
         };
