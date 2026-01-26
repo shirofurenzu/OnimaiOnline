@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>賓果大挑戰 - V20 修復刪除功能版</title>
-    
+    <title>賓果大挑戰</title>
+    <link rel="icon" href="../../images/brother.png" type="image/png">
+
     <!-- 引入 React 18 -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -57,10 +58,12 @@
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { 
             -webkit-appearance: none; 
+            appearance: none; /* V21: 加入標準屬性以消除警告 */
             margin: 0; 
         }
         input[type=number] {
             -moz-appearance: textfield;
+            appearance: textfield; /* V21: 加入標準屬性以消除警告 */
         }
     </style>
 </head>
@@ -728,7 +731,7 @@
                                 </div>
                                 {isTaskMode && <div className="mt-4 flex gap-2"><select value={activeListId} onChange={e=>setActiveListId(e.target.value)} className="flex-1 p-2 border rounded"><option disabled value="">選擇列表</option>{taskLists.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select><button onClick={()=>setView('manage-lists')} className="p-2 bg-slate-200 rounded"><LayoutList/></button></div>}
                             </div>
-                            <div className="flex gap-2"><button onClick={initializeGame} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">開始遊戲</button><a href="../index.html" className="flex-1 py-3 flex justify-center items-center bg-slate-100 font-bold rounded-xl text-slate-600">回首頁</a></div>
+                            <div className="flex gap-2"><button onClick={initializeGame} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">開始遊戲</button><a href="../../index.html" className="flex-1 py-3 flex justify-center items-center bg-slate-100 font-bold rounded-xl text-slate-600">回首頁</a></div>
                         </div>
                     )}
 

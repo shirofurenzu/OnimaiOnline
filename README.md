@@ -1,6 +1,5 @@
 # Onimai Online
-git status>git add . >git commit -m "1.x.x"> git push origin main 
-
+ git status>git add . >git commit -m "1.x.x"> git push origin main 
 2025/5/4
 [1.0.0]
 1.加入"合約盈虧預估"頁面
@@ -25,3 +24,7 @@ git status>git add . >git commit -m "1.x.x"> git push origin main
 2026/1/25
 [1.3.2]
 1.賓果遊戲加入精確時間設定、倒數提示音功能、編輯任務、調整任務順序、螢幕恆亮功能
+
+2026/1/26
+[1.4.0]
+更改目錄排列方式
