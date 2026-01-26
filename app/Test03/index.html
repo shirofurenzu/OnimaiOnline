@@ -1,154 +1,80 @@
 <!DOCTYPE html>
-<html lang="zh-Hant-TW">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>科技風格示範</title>
+    <title>持久化倒數計時器</title>
     <style>
-        /* 全域設定 */
-        :root {
-            --bg-color: #0f172a;
-            --text-color: #e2e8f0;
-            --accent-color: #00ff9d; /* 螢光綠 */
-            --secondary-color: #334155;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Courier New', Courier, monospace; /* 等寬字體營造科技感 */
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-
-        /* 導覽列 */
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 2rem;
-            background-color: rgba(15, 23, 42, 0.9);
-            border-bottom: 1px solid var(--secondary-color);
-            position: sticky;
-            top: 0;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--accent-color);
-        }
-
-        .nav-links a {
-            color: var(--text-color);
-            text-decoration: none;
-            margin-left: 20px;
-            font-size: 0.9rem;
-        }
-
-        .nav-links a:hover {
-            color: var(--accent-color);
-        }
-
-        /* 主視覺區塊 (Hero Section) */
-        .hero {
-            flex: 1; /* 佔滿剩餘空間 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .hero h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, #fff, var(--accent-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            color: #94a3b8;
-            max-width: 600px;
-            margin-bottom: 2rem;
-            line-height: 1.6;
-        }
-
-        /* 按鈕樣式 */
-        .cta-button {
-            background-color: transparent;
-            color: var(--accent-color);
-            border: 2px solid var(--accent-color);
-            padding: 12px 30px;
-            font-size: 1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 4px;
-        }
-
-        .cta-button:hover {
-            background-color: var(--accent-color);
-            color: var(--bg-color);
-            box-shadow: 0 0 15px var(--accent-color); /* 發光效果 */
-        }
-
-        /* 頁尾 */
-        footer {
-            text-align: center;
-            padding: 1rem;
-            background-color: var(--secondary-color);
-            font-size: 0.8rem;
-            color: #94a3b8;
-        }
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        #timer { font-size: 3rem; margin: 20px 0; font-weight: bold; }
+        button { font-size: 1.2rem; padding: 10px 20px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <nav>
-        <div class="logo">DEV_DEMO</div>
-        <div class="nav-links">
-            <a href="#">首頁</a>
-            <a href="#">關於</a>
-            <a href="#">服務</a>
-        </div>
-    </nav>
-
-    <main class="hero">
-        <h1 id="main-title">未來科技介面</h1>
-        <p>這是一個使用 CSS Flexbox 進行排版，並採用暗色系與螢光色對比設計的網頁範例。適合用於展示軟體產品或個人作品集。</p>
-        <button class="cta-button" onclick="startSystem()">啟動系統</button>
-    </main>
-
-    <footer>
-        &copy; 2024 Simple Tech HTML Demo. All rights reserved.
-    </footer>
+    <h1>專注倒數計時</h1>
+    <div id="timer">準備開始</div>
+    <button onclick="startTimer(120)">開始 2 小時讀書</button>
+    <button onclick="clearTimer()">重置</button>
 
     <script>
-        function startSystem() {
-            const btn = document.querySelector('.cta-button');
-            const title = document.getElementById('main-title');
+        const timerDisplay = document.getElementById('timer');
+        let intervalId;
+
+        // 1. 網頁一載入，馬上檢查有沒有正在進行的倒數
+        checkTimer();
+
+        function startTimer(minutes) {
+            const now = new Date().getTime();
+            // 計算目標時間：現在時間 + 分鐘數 * 60秒 * 1000毫秒
+            const targetTime = now + (minutes * 60 * 1000);
             
-            // 模擬按鈕狀態改變
-            btn.innerText = "載入中...";
-            btn.style.cursor = "wait";
+            // 存入 LocalStorage，這就是「關掉網頁也不怕」的關鍵
+            localStorage.setItem('targetTime', targetTime);
             
-            // 模擬延遲後的動作
-            setTimeout(() => {
-                btn.innerText = "系統已就緒";
-                title.innerText = "歡迎進入核心";
-                title.style.textShadow = "0 0 10px #00ff9d"; // 文字發光
-                btn.style.backgroundColor = "#00ff9d";
-                btn.style.color = "#0f172a";
+            checkTimer(); // 立即更新畫面
+        }
+
+        function checkTimer() {
+            // 每次檢查先清除舊的計時器，避免重複執行
+            if (intervalId) clearInterval(intervalId);
+
+            const storedTarget = localStorage.getItem('targetTime');
+
+            if (!storedTarget) {
+                timerDisplay.textContent = "準備開始";
+                return;
+            }
+
+            // 啟動一個每秒更新一次畫面的計時器
+            // 注意：這裡的 setInterval 只是為了「更新畫面數字」，而不是「計算時間」
+            intervalId = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = storedTarget - now;
+
+                if (distance < 0) {
+                    // 時間到了
+                    clearInterval(intervalId);
+                    timerDisplay.textContent = "🎉 已完成！";
+                    // 這裡可以選擇是否要移除 localStorage
+                    // localStorage.removeItem('targetTime'); 
+                } else {
+                    // 時間還沒到，計算剩餘的小時、分、秒
+                    const hours = Math.floor((distance / (1000 * 60 * 60)) % 24);
+                    const minutes = Math.floor((distance / (1000 * 60)) % 60);
+                    const seconds = Math.floor((distance / 1000) % 60);
+
+                    timerDisplay.textContent = 
+                        `${hours}小時 ${minutes}分 ${seconds}秒`;
+                }
             }, 1000);
         }
-    </script>
 
+        function clearTimer() {
+            localStorage.removeItem('targetTime');
+            if (intervalId) clearInterval(intervalId);
+            timerDisplay.textContent = "準備開始";
+        }
+    </script>
 </body>
 </html>
