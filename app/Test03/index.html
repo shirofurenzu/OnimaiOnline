@@ -1,405 +1,225 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>隨機/同步倒數計時器</title>
-    <style>
-        :root {
-            --primary-color: #3b82f6;
-            --primary-dark: #2563eb;
-            --secondary-color: #8b5cf6; /* 隨機模式的主色 */
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --text-color: #1f2937;
-            --error-color: #ef4444;
-            --border-color: #e5e7eb;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大型機台抽籤系統</title>
+<style>
+  body {
+    background-color: #222;
+    display: flex;
+    flex-direction: column; /* 改為垂直排列 */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    color: white;
+  }
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
+  /* --- 1. 顯示螢幕 (Result Screen) --- */
+  .screen-container {
+    background: #000;
+    border: 4px solid #555;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
 
-        .container {
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 600px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
+  .screen-text {
+    font-family: 'Courier New', Courier, monospace; /* 等寬字體更有電子感 */
+    font-size: 32px;
+    font-weight: bold;
+    color: #33ff00; /* 經典綠色螢光 */
+    text-shadow: 0 0 10px rgba(51, 255, 0, 0.7);
+    min-height: 40px;
+    line-height: 40px;
+    white-space: nowrap;
+  }
 
-        h1 { margin: 0 0 1.5rem 0; font-size: 1.5rem; color: #4b5563; }
-        h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: #6b7280; font-weight: normal; }
+  /* 螢幕反光效果 */
+  .screen-container::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+    pointer-events: none;
+  }
 
-        /* 頁籤切換樣式 */
-        .tabs {
-            display: flex;
-            background: #f1f5f9;
-            padding: 4px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            border-radius: 6px;
-            font-weight: 600;
-            color: #64748b;
-            transition: all 0.2s;
-        }
-        .tab-btn.active {
-            background: white;
-            color: var(--primary-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        /* 當選中隨機模式時的特殊顏色 */
-        .tab-btn.active[data-mode="random"] {
-            color: var(--secondary-color);
-        }
+  /* --- 2. 控制台 (Console Panel) --- */
+  .console-panel {
+    background: #333;
+    padding: 40px 60px;
+    border-radius: 20px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    display: flex;
+    gap: 40px;
+    border: 2px solid #555;
+    margin-bottom: 30px;
+  }
 
-        /* 輸入框共用樣式 */
-        .input-group {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        .input-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .input-wrapper input {
-            width: 60px;
-            padding: 8px;
-            font-size: 1.2rem;
-            text-align: center;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-wrapper input:focus { border-color: var(--primary-color); }
-        .input-wrapper label { font-size: 0.75rem; color: #6b7280; margin-top: 4px; }
-        
-        /* 隨機模式的範圍區塊 */
-        .range-block {
-            border: 1px solid #f0f0f0;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #fafafa;
-        }
+  /* --- 按鈕通用樣式 --- */
+  .arcade-btn {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%; /* 確保圓形 */
+    border: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    user-select: none;
+    transition: all 0.1s ease;
+    border: 4px solid rgba(0,0,0,0.2); 
+  }
 
-        /* 倒數顯示樣式 */
-        .timer-display {
-            font-size: 3.5rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            color: var(--primary-color);
-            margin: 20px 0;
-            line-height: 1.2;
-        }
-        
-        /* 按鈕樣式 */
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1.1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 5px;
-            width: 100%;
-            max-width: 250px;
-        }
-        .btn:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
-        .btn:active { transform: translateY(0); }
-        
-        .btn-random { background-color: var(--secondary-color); }
-        .btn-random:hover { background-color: #7c3aed; }
+  /* 紅色按鈕 */
+  .btn-red {
+    background: radial-gradient(circle at 30% 30%, #ff7675, #d63031);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #b71540,
+      0 15px 20px rgba(0,0,0,0.4);
+  }
 
-        .btn-secondary { background-color: #9ca3af; }
-        .btn-secondary:hover { background-color: #6b7280; }
-        
-        .btn-outline {
-            background-color: transparent;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-        }
-        .btn-outline:hover { background-color: #eff6ff; }
+  /* 藍色按鈕 */
+  .btn-blue {
+    background: radial-gradient(circle at 30% 30%, #74b9ff, #0984e3);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #185adb, /* 修改處：陰影調亮，讓它在深色背景更明顯 */
+      0 15px 20px rgba(0,0,0,0.4);
+  }
 
-        .share-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            display: none;
-        }
+  /* 按下效果 */
+  .arcade-btn:active {
+    transform: translateY(8px);
+  }
 
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #10b981;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .toast.show { opacity: 1; }
+  .btn-red:active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #b71540, 0 5px 5px rgba(0,0,0,0.4);
+  }
 
-        @media (max-width: 480px) {
-            .timer-display { font-size: 2.5rem; }
-            .container { padding: 1.5rem; }
-        }
-    </style>
+  .btn-blue:active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #185adb, 0 5px 5px rgba(0,0,0,0.4); /* 修改處：配合上方顏色 */
+  }
+
+  /* --- 3. 輸入設定區域 --- */
+  .input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 300px;
+  }
+
+  .input-label {
+    font-size: 14px;
+    color: #aaa;
+  }
+
+  textarea {
+    width: 100%;
+    height: 80px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 8px;
+    color: white;
+    padding: 10px;
+    font-size: 14px;
+    resize: none;
+  }
+  
+  textarea:focus {
+    outline: 2px solid #007bff;
+  }
+
+</style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- 設定模式 (Setup View) -->
-        <div id="setupView">
-            
-            <!-- 模式切換 Tabs -->
-            <div class="tabs">
-                <button class="tab-btn active" data-mode="fixed" onclick="switchMode('fixed')">一般倒數</button>
-                <button class="tab-btn" data-mode="random" onclick="switchMode('random')">隨機範圍</button>
-            </div>
+<!-- 顯示螢幕 -->
+<div class="screen-container">
+  <div class="screen-text" id="result-text">READY</div>
+</div>
 
-            <!-- 一般倒數輸入區 -->
-            <div id="fixedModeInputs">
-                <h3>設定固定時間</h3>
-                <div class="input-group">
-                    <div class="input-wrapper"><input type="number" id="fixDays" min="0" value="0" placeholder="0"><label>天</label></div>
-                    <div class="input-wrapper"><input type="number" id="fixHours" min="0" max="23" value="0" placeholder="0"><label>時</label></div>
-                    <div class="input-wrapper"><input type="number" id="fixMinutes" min="0" max="59" value="0" placeholder="0"><label>分</label></div>
-                </div>
-                <button class="btn" onclick="startSetup()">開始倒數</button>
-            </div>
+<!-- 控制台 -->
+<div class="console-panel">
+  <button class="arcade-btn btn-red" onclick="startLottery()">A</button>
+  <button class="arcade-btn btn-blue" onclick="startLottery()">B</button>
+</div>
 
-            <!-- 隨機倒數輸入區 -->
-            <div id="randomModeInputs" style="display: none;">
-                <div class="range-block">
-                    <h3>最短時間 (Min)</h3>
-                    <div class="input-group">
-                        <div class="input-wrapper"><input type="number" id="minDays" min="0" value="0"><label>天</label></div>
-                        <div class="input-wrapper"><input type="number" id="minHours" min="0" max="23" value="0"><label>時</label></div>
-                        <div class="input-wrapper"><input type="number" id="minMinutes" min="0" max="59" value="0"><label>分</label></div>
-                    </div>
-                </div>
+<!-- 輸入選項 -->
+<div class="input-area">
+  <label class="input-label">抽籤選項 (用換行或逗號分隔)</label>
+  <textarea id="options-input">
+BR
+GR</textarea>
+</div>
 
-                <div class="range-block">
-                    <h3>最長時間 (Max)</h3>
-                    <div class="input-group">
-                        <div class="input-wrapper"><input type="number" id="maxDays" min="0" value="0"><label>天</label></div>
-                        <div class="input-wrapper"><input type="number" id="maxHours" min="0" max="23" value="0"><label>時</label></div>
-                        <div class="input-wrapper"><input type="number" id="maxMinutes" min="0" max="59" value="0"><label>分</label></div>
-                    </div>
-                </div>
-                
-                <button class="btn btn-random" onclick="startSetup()">🎲 生成隨機時間並倒數</button>
-            </div>
-        </div>
+<script>
+  let isSpinning = false;
+  const screenText = document.getElementById('result-text');
+  const inputField = document.getElementById('options-input');
 
-        <!-- 倒數模式 (Timer View) -->
-        <div id="timerView" style="display: none;">
-            <div id="statusText">距離結束還有</div>
-            <div class="timer-display" id="timerDisplay">00:00:00</div>
-            
-            <div class="share-section" id="shareSection">
-                <p style="margin-bottom: 10px; font-size: 0.9rem; color: #666;">
-                    複製連結分享給朋友，時間將會同步：
-                </p>
-                <button class="btn btn-outline" onclick="copyLink()">🔗 複製分享連結</button>
-                <button class="btn btn-secondary" onclick="resetTimer()">❌ 重置/結束</button>
-            </div>
-        </div>
-    </div>
+  function startLottery() {
+    // 如果正在抽，就不要重複觸發
+    if (isSpinning) return;
+    
+    // 1. 取得選項
+    const rawText = inputField.value;
+    // 使用正規表達式分割：換行符號 (\n) 或 逗號 (,|，) 都可以當分隔
+    let options = rawText.split(/[\n,，]+/).map(item => item.trim()).filter(item => item !== '');
 
-    <div id="toast" class="toast">連結已複製！</div>
+    if (options.length === 0) {
+      screenText.innerText = "沒有選項!";
+      screenText.style.color = "red";
+      return;
+    }
 
-    <script>
-        let intervalId;
-        let currentMode = 'fixed'; // 'fixed' or 'random'
-        const setupView = document.getElementById('setupView');
-        const timerView = document.getElementById('timerView');
-        const timerDisplay = document.getElementById('timerDisplay');
-        const statusText = document.getElementById('statusText');
-        const shareSection = document.getElementById('shareSection');
-        const toast = document.getElementById('toast');
+    isSpinning = true;
+    screenText.style.color = "#33ff00"; // 恢復綠色
 
-        // 1. 初始化檢查網址參數
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            const endTime = params.get('end');
-            if (endTime) {
-                runTimer(parseInt(endTime));
-            } else {
-                showSetup();
-            }
-        });
+    // 2. 抽籤動畫 (跑馬燈效果)
+    let counter = 0;
+    // 增加速度感：先快後慢的效果比較難寫，這裡用簡單的固定速度切換
+    const interval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * options.length);
+      screenText.innerText = options[randomIndex];
+      counter++;
 
-        // 切換模式函數
-        function switchMode(mode) {
-            currentMode = mode;
-            // 更新按鈕樣式
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if(btn.dataset.mode === mode) btn.classList.add('active');
-            });
+      // 跑個 20 次 (約 2 秒) 後停下
+      if (counter > 20) {
+        clearInterval(interval);
+        showFinalResult(options);
+      }
+    }, 80); // 每 0.08 秒換一次字
+  }
 
-            // 切換顯示區塊
-            if (mode === 'fixed') {
-                document.getElementById('fixedModeInputs').style.display = 'block';
-                document.getElementById('randomModeInputs').style.display = 'none';
-                timerDisplay.style.color = 'var(--primary-color)';
-            } else {
-                document.getElementById('fixedModeInputs').style.display = 'none';
-                document.getElementById('randomModeInputs').style.display = 'block';
-                timerDisplay.style.color = 'var(--secondary-color)';
-            }
-        }
+  function showFinalResult(options) {
+    // 3. 顯示最終結果
+    const finalIndex = Math.floor(Math.random() * options.length);
+    screenText.innerText = options[finalIndex];
+    
+    // 閃爍特效
+    screenText.style.color = "#fff"; // 變亮白
+    setTimeout(() => {
+      screenText.style.color = "#33ff00"; // 變回綠色
+      isSpinning = false;
+    }, 200);
+  }
+</script>
 
-        // 處理輸入並開始倒數
-        function startSetup() {
-            let totalMs = 0;
-
-            if (currentMode === 'fixed') {
-                // 一般模式計算
-                const d = parseInt(document.getElementById('fixDays').value) || 0;
-                const h = parseInt(document.getElementById('fixHours').value) || 0;
-                const m = parseInt(document.getElementById('fixMinutes').value) || 0;
-                
-                if (d===0 && h===0 && m===0) return alert("請輸入時間！");
-                totalMs = toMs(d, h, m);
-
-            } else {
-                // 隨機模式計算
-                const minD = parseInt(document.getElementById('minDays').value) || 0;
-                const minH = parseInt(document.getElementById('minHours').value) || 0;
-                const minM = parseInt(document.getElementById('minMinutes').value) || 0;
-                
-                const maxD = parseInt(document.getElementById('maxDays').value) || 0;
-                const maxH = parseInt(document.getElementById('maxHours').value) || 0;
-                const maxM = parseInt(document.getElementById('maxMinutes').value) || 0;
-
-                const minMs = toMs(minD, minH, minM);
-                const maxMs = toMs(maxD, maxH, maxM);
-
-                if (maxMs <= 0 && minMs <= 0) return alert("請至少輸入一點時間！");
-                
-                // 防呆：如果使用者 Max 設得比 Min 小，自動交換
-                let finalMin = Math.min(minMs, maxMs);
-                let finalMax = Math.max(minMs, maxMs);
-
-                // 隨機取出區間內的一個毫秒數
-                totalMs = Math.floor(Math.random() * (finalMax - finalMin + 1)) + finalMin;
-            }
-
-            const now = new Date().getTime();
-            const targetTime = now + totalMs;
-
-            // 嘗試更新網址
-            try {
-                const newUrl = `${window.location.pathname}?end=${targetTime}`;
-                window.history.pushState({path: newUrl}, '', newUrl);
-            } catch (e) {
-                console.warn("Local testing: URL pushState blocked.");
-            }
-
-            runTimer(targetTime);
-        }
-
-        function toMs(d, h, m) {
-            return ((d * 24 * 60 * 60) + (h * 60 * 60) + (m * 60)) * 1000;
-        }
-
-        function runTimer(endTime) {
-            setupView.style.display = 'none';
-            timerView.style.display = 'block';
-            shareSection.style.display = 'block';
-            
-            updateDisplay(endTime);
-            if (intervalId) clearInterval(intervalId);
-            intervalId = setInterval(() => updateDisplay(endTime), 1000);
-        }
-
-        function updateDisplay(endTime) {
-            const now = new Date().getTime();
-            const distance = endTime - now;
-
-            if (distance < 0) {
-                clearInterval(intervalId);
-                timerDisplay.textContent = "時間到！";
-                statusText.textContent = "🎉 倒數結束";
-                timerDisplay.style.color = "#ef4444";
-                return;
-            }
-
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            let timeString = "";
-            if (days > 0) timeString += `${days}天 `;
-            timeString += `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-
-            timerDisplay.textContent = timeString;
-            document.title = timeString + " - 倒數中";
-        }
-
-        function pad(num) {
-            return num.toString().padStart(2, '0');
-        }
-
-        function resetTimer() {
-            if (confirm('確定要結束目前的倒數並重置嗎？')) {
-                clearInterval(intervalId);
-                try {
-                    window.history.pushState({}, '', window.location.pathname);
-                } catch (e) {}
-                
-                document.title = "同步倒數計時器";
-                statusText.textContent = "距離結束還有";
-                
-                // 恢復預設顏色
-                timerDisplay.style.color = currentMode === 'random' ? 'var(--secondary-color)' : 'var(--primary-color)';
-                
-                showSetup();
-            }
-        }
-
-        function showSetup() {
-            setupView.style.display = 'block';
-            timerView.style.display = 'none';
-        }
-
-        function copyLink() {
-            if (!navigator.clipboard) return alert("請手動複製網址列。");
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            }).catch(() => alert('複製失敗，請手動複製'));
-        }
-    </script>
 </body>
 </html>
+
+
