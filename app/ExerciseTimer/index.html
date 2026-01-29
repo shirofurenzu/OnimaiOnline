@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>間歇運動計時器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&display=swap');
+        
+        body {
+            font-family: 'Segoe UI', Microsoft JhengHei, sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: white;
+            transition: background-color 0.5s ease;
+        }
+
+        .timer-font {
+            font-family: 'Roboto Mono', monospace;
+        }
+
+        /* 呼吸動畫效果 - 用於倒數 */
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .urgent {
+            color: #ef4444; /* Red 500 */
+            animation: pulse-red 0.5s infinite;
+        }
+
+        /* 狀態背景色類別 */
+        .bg-work { background-color: #064e3b; } /* Emerald 900 */
+        .bg-rest { background-color: #7c2d12; } /* Orange 900 */
+        .bg-idle { background-color: #0f172a; } /* Slate 900 */
+    </style>
+</head>
+<body id="mainBody" class="bg-idle min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+        
+        <!-- Header -->
+        <div class="bg-slate-900 p-4 text-center border-b border-slate-700">
+            <h1 class="text-xl font-bold text-slate-100">間歇運動計時器</h1>
+        </div>
+
+        <!-- Timer Display Area -->
+        <div class="p-8 text-center relative">
+            <!-- Status Badge -->
+            <div class="mb-4">
+                <span id="statusBadge" class="px-4 py-1.5 rounded-full text-sm font-bold bg-slate-600 text-slate-200 tracking-wider uppercase">
+                    準備就緒
+                </span>
+            </div>
+
+            <!-- Main Timer -->
+            <div class="relative z-10">
+                <div id="timerDisplay" class="timer-font text-8xl font-bold tracking-tighter text-white drop-shadow-lg cursor-pointer hover:opacity-90 transition-opacity select-none" title="點擊暫停/開始">
+                    00:30
+                </div>
+            </div>
+
+            <!-- Counters Grid -->
+            <div class="mt-8 grid grid-cols-2 gap-4 border-t border-slate-700/50 pt-6">
+                <!-- Set Counter -->
+                <div class="flex flex-col items-center justify-center">
+                    <span class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">目前組數</span>
+                    <span id="setCounter" class="text-emerald-400 text-4xl font-bold timer-font">1</span>
+                </div>
+                
+                <!-- Total Time Display -->
+                <div class="flex flex-col items-center justify-center border-l border-slate-700/50">
+                    <span class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">總時間</span>
+                    <span id="totalTimeDisplay" class="text-slate-300 text-4xl font-bold timer-font">00:00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Section (Collapsible technically, but usually visible when stopped) -->
+        <div id="settingsPanel" class="px-8 pb-4 transition-all duration-300">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">運動時間 (秒)</label>
+                    <input type="number" id="workInput" value="30" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">休息時間 (秒)</label>
+                    <input type="number" id="restInput" value="10" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="p-6 bg-slate-900 border-t border-slate-700 grid grid-cols-2 gap-4">
+            <button id="startBtn" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                開始
+            </button>
+            
+            <button id="resetBtn" class="col-span-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                重置
+            </button>
+        </div>
+        
+        <!-- Volume Indicator -->
+        <div class="text-center pb-2 bg-slate-900">
+            <p class="text-xs text-slate-500">提示：請開啟聲音以聽取倒數提示音</p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const timerDisplay = document.getElementById('timerDisplay');
+        const statusBadge = document.getElementById('statusBadge');
+        const setCounter = document.getElementById('setCounter');
+        const totalTimeDisplay = document.getElementById('totalTimeDisplay');
+        const workInput = document.getElementById('workInput');
+        const restInput = document.getElementById('restInput');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const mainBody = document.getElementById('mainBody');
+        const settingsPanel = document.getElementById('settingsPanel');
+
+        // State Variables
+        let timer = null;
+        // Removed transitionTimeout
+        let isRunning = false;
+        let mode = 'idle'; // idle, work, rest
+        let currentTime = 30;
+        let totalSets = 1;
+        let totalSeconds = 0;
+        
+        // Settings (initially from inputs)
+        let workTime = 30;
+        let restTime = 10;
+
+        // Web Audio API Context
+        let audioCtx = null;
+
+        // Initialize Audio Context (Must be triggered by user interaction)
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Sound Synthesis Function
+        function playTone(type) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'tick') {
+                // Short beep (3, 2, 1)
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'end') {
+                // Long beep (0 / Switch)
+                oscillator.type = 'square'; // More aggressive sound
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.6);
+            }
+        }
+
+        // Format Time mm:ss
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // UI Update Functions
+        function updateDisplay() {
+            timerDisplay.textContent = formatTime(currentTime);
+            
+            // Urgency effects (Visual)
+            if (currentTime <= 3 && isRunning && currentTime > 0) {
+                timerDisplay.classList.add('urgent');
+            } else {
+                timerDisplay.classList.remove('urgent');
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            mainBody.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ";
+
+            if (mode === 'work') {
+                mainBody.classList.add('bg-work');
+                statusBadge.textContent = "🔥 運動中";
+                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-500 text-white tracking-wider uppercase shadow-lg";
+                currentTime = workTime;
+            } else if (mode === 'rest') {
+                mainBody.classList.add('bg-rest');
+                statusBadge.textContent = "☕ 休息";
+                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-orange-500 text-white tracking-wider uppercase shadow-lg";
+                currentTime = restTime;
+            } else {
+                mainBody.classList.add('bg-idle');
+                statusBadge.textContent = "準備就緒";
+                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-slate-600 text-slate-200 tracking-wider uppercase";
+            }
+            updateDisplay();
+        }
+
+        // Timer Logic
+        function tick() {
+            totalSeconds++;
+            totalTimeDisplay.textContent = formatTime(totalSeconds);
+
+            // Time logic
+            if (currentTime === 1) {
+                // Transition moment (Replaces 0s logic)
+                // Play Long Beep immediately at the switch
+                playTone('end');
+                
+                // Switch Mode immediately
+                if (mode === 'work') {
+                    setMode('rest');
+                } else {
+                    totalSets++;
+                    setCounter.textContent = totalSets;
+                    setMode('work');
+                }
+                // The new time is set by setMode (e.g., 30) and displayed immediately.
+                // It will stay for 1 second until the next tick().
+            } else if (currentTime > 1) {
+                currentTime--;
+                updateDisplay();
+                
+                // Sound logic for 3, 2, 1
+                if (currentTime <= 3) {
+                    playTone('tick');
+                }
+            }
+        }
+
+        function toggleTimer() {
+            initAudio(); // Initialize audio context on first interaction
+
+            if (isRunning) {
+                // Pause Logic
+                clearInterval(timer);
+                // Removed clearTimeout
+                isRunning = false;
+                startBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg> 繼續`;
+                startBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
+                startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                
+                // Enable inputs while paused
+                workInput.disabled = false;
+                restInput.disabled = false;
+                settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
+
+            } else {
+                // Start Logic
+                if (mode === 'idle') {
+                    workTime = parseInt(workInput.value) || 30;
+                    restTime = parseInt(restInput.value) || 10;
+                    totalSets = 1;
+                    setCounter.textContent = totalSets;
+                    setMode('work');
+                } else {
+                    workTime = parseInt(workInput.value) || 30;
+                    restTime = parseInt(restInput.value) || 10;
+                }
+
+                isRunning = true;
+                timer = setInterval(tick, 1000);
+                
+                startBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg> 暫停`;
+                startBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                startBtn.classList.add('bg-amber-600', 'hover:bg-amber-500'); // Pause color
+
+                // Disable inputs while running
+                workInput.disabled = true;
+                restInput.disabled = true;
+                settingsPanel.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        // Button Actions
+        startBtn.addEventListener('click', toggleTimer);
+        timerDisplay.addEventListener('click', toggleTimer); // Click on number to toggle
+
+        resetBtn.addEventListener('click', () => {
+            clearInterval(timer);
+            // Removed clearTimeout
+            isRunning = false;
+            mode = 'idle';
+            
+            // Reset UI
+            startBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg> 開始`;
+            startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
+            startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+            
+            // Reset Values
+            workTime = parseInt(workInput.value) || 30;
+            currentTime = workTime;
+            
+            totalSets = 1;
+            setCounter.textContent = totalSets;
+
+            totalSeconds = 0;
+            totalTimeDisplay.textContent = "00:00";
+
+            setMode('idle'); 
+            timerDisplay.textContent = formatTime(workTime);
+
+            // Re-enable inputs
+            workInput.disabled = false;
+            restInput.disabled = false;
+            settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
+        });
+
+        // Initial setup
+        workInput.addEventListener('change', () => {
+            if (!isRunning && mode === 'idle') {
+                currentTime = parseInt(workInput.value) || 30;
+                updateDisplay();
+            }
+        });
+
+    </script>
+</body>
+</html>
