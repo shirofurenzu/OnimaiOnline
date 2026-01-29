@@ -1,405 +1,355 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>隨機/同步倒數計時器</title>
-    <style>
-        :root {
-            --primary-color: #3b82f6;
-            --primary-dark: #2563eb;
-            --secondary-color: #8b5cf6; /* 隨機模式的主色 */
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --text-color: #1f2937;
-            --error-color: #ef4444;
-            --border-color: #e5e7eb;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大型機台抽籤系統</title>
+<style>
+  body {
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    color: white;
+  }
 
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
+  /* --- 1. 顯示螢幕 (Result Screen) --- */
+  .screen-container {
+    background: #000;
+    border: 4px solid #555;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
 
-        .container {
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 600px;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
+  /* 中大獎時的閃爍動畫 */
+  @keyframes jackpot-flash {
+    0% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+    15% { border-color: #ff7f00; box-shadow: 0 0 30px #ff7f00; }
+    30% { border-color: #ffff00; box-shadow: 0 0 30px #ffff00; }
+    45% { border-color: #00ff00; box-shadow: 0 0 30px #00ff00; }
+    60% { border-color: #0000ff; box-shadow: 0 0 30px #0000ff; }
+    75% { border-color: #4b0082; box-shadow: 0 0 30px #4b0082; }
+    90% { border-color: #9400d3; box-shadow: 0 0 30px #9400d3; }
+    100% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+  }
 
-        h1 { margin: 0 0 1.5rem 0; font-size: 1.5rem; color: #4b5563; }
-        h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: #6b7280; font-weight: normal; }
+  .jackpot-mode {
+    animation: jackpot-flash 0.1s linear infinite; /* 極速閃爍 */
+    background: #222;
+  }
 
-        /* 頁籤切換樣式 */
-        .tabs {
-            display: flex;
-            background: #f1f5f9;
-            padding: 4px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .tab-btn {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            border-radius: 6px;
-            font-weight: 600;
-            color: #64748b;
-            transition: all 0.2s;
-        }
-        .tab-btn.active {
-            background: white;
-            color: var(--primary-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        /* 當選中隨機模式時的特殊顏色 */
-        .tab-btn.active[data-mode="random"] {
-            color: var(--secondary-color);
-        }
+  .screen-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 32px;
+    font-weight: bold;
+    color: #33ff00;
+    text-shadow: 0 0 10px rgba(51, 255, 0, 0.7);
+    min-height: 40px;
+    line-height: 40px;
+    white-space: nowrap;
+    transition: transform 0.2s;
+  }
 
-        /* 輸入框共用樣式 */
-        .input-group {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        .input-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .input-wrapper input {
-            width: 60px;
-            padding: 8px;
-            font-size: 1.2rem;
-            text-align: center;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-wrapper input:focus { border-color: var(--primary-color); }
-        .input-wrapper label { font-size: 0.75rem; color: #6b7280; margin-top: 4px; }
-        
-        /* 隨機模式的範圍區塊 */
-        .range-block {
-            border: 1px solid #f0f0f0;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #fafafa;
-        }
+  /* 中大獎時文字放大 */
+  .text-boom {
+    transform: scale(1.5);
+    color: #fff !important;
+    text-shadow: 0 0 20px #fff, 0 0 40px #ff00de !important;
+  }
 
-        /* 倒數顯示樣式 */
-        .timer-display {
-            font-size: 3.5rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-            color: var(--primary-color);
-            margin: 20px 0;
-            line-height: 1.2;
-        }
-        
-        /* 按鈕樣式 */
-        .btn {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            font-size: 1.1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 5px;
-            width: 100%;
-            max-width: 250px;
-        }
-        .btn:hover { background-color: var(--primary-dark); transform: translateY(-1px); }
-        .btn:active { transform: translateY(0); }
-        
-        .btn-random { background-color: var(--secondary-color); }
-        .btn-random:hover { background-color: #7c3aed; }
+  .screen-container::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+    pointer-events: none;
+  }
 
-        .btn-secondary { background-color: #9ca3af; }
-        .btn-secondary:hover { background-color: #6b7280; }
-        
-        .btn-outline {
-            background-color: transparent;
-            border: 2px solid var(--primary-color);
-            color: var(--primary-color);
-        }
-        .btn-outline:hover { background-color: #eff6ff; }
+  /* --- 2. 控制台 (Console Panel) --- */
+  .console-panel {
+    background: #333;
+    padding: 40px 60px;
+    border-radius: 20px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    display: flex;
+    gap: 40px;
+    border: 2px solid #555;
+    margin-bottom: 30px;
+    position: relative;
+  }
+  
+  /* 鍵盤提示文字 (僅電腦版顯示) */
+  .keyboard-hint {
+    position: absolute;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    left: 0;
+  }
 
-        .share-section {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            display: none;
-        }
+  /* --- 按鈕通用樣式 --- */
+  .arcade-btn {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    user-select: none;
+    transition: transform 0.1s ease; /* 只對位移做過渡 */
+    border: 4px solid rgba(0,0,0,0.2); 
+  }
+  
+  /* 透過 class 控制按下的狀態 (為了支援鍵盤操作) */
+  .arcade-btn.active {
+    transform: translateY(8px);
+  }
 
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #10b981;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-            pointer-events: none;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .toast.show { opacity: 1; }
+  /* 紅色按鈕 */
+  .btn-red {
+    background: radial-gradient(circle at 30% 30%, #ff7675, #d63031);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #b71540,
+      0 15px 20px rgba(0,0,0,0.4);
+  }
+  .btn-red.active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #b71540, 0 5px 5px rgba(0,0,0,0.4);
+  }
 
-        @media (max-width: 480px) {
-            .timer-display { font-size: 2.5rem; }
-            .container { padding: 1.5rem; }
-        }
-    </style>
+  /* 藍色按鈕 */
+  .btn-blue {
+    background: radial-gradient(circle at 30% 30%, #74b9ff, #0984e3);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #185adb, 
+      0 15px 20px rgba(0,0,0,0.4);
+  }
+  .btn-blue.active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #185adb, 0 5px 5px rgba(0,0,0,0.4);
+  }
+
+  /* --- 3. 輸入設定區域 --- */
+  .input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 300px;
+  }
+
+  .input-label {
+    font-size: 14px;
+    color: #aaa;
+  }
+
+  textarea {
+    width: 100%;
+    height: 80px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 8px;
+    color: white;
+    padding: 10px;
+    font-size: 14px;
+    resize: none;
+  }
+  
+  textarea:focus {
+    outline: 2px solid #007bff;
+  }
+
+</style>
 </head>
 <body>
 
-    <div class="container">
-        <!-- 設定模式 (Setup View) -->
-        <div id="setupView">
-            
-            <!-- 模式切換 Tabs -->
-            <div class="tabs">
-                <button class="tab-btn active" data-mode="fixed" onclick="switchMode('fixed')">一般倒數</button>
-                <button class="tab-btn" data-mode="random" onclick="switchMode('random')">隨機範圍</button>
-            </div>
+<!-- 顯示螢幕 -->
+<div class="screen-container" id="screen-box">
+  <div class="screen-text" id="result-text">READY</div>
+</div>
 
-            <!-- 一般倒數輸入區 -->
-            <div id="fixedModeInputs">
-                <h3>設定固定時間</h3>
-                <div class="input-group">
-                    <div class="input-wrapper"><input type="number" id="fixDays" min="0" value="0" placeholder="0"><label>天</label></div>
-                    <div class="input-wrapper"><input type="number" id="fixHours" min="0" max="23" value="0" placeholder="0"><label>時</label></div>
-                    <div class="input-wrapper"><input type="number" id="fixMinutes" min="0" max="59" value="0" placeholder="0"><label>分</label></div>
-                </div>
-                <button class="btn" onclick="startSetup()">開始倒數</button>
-            </div>
+<!-- 控制台 -->
+<div class="console-panel">
+  <!-- id 用於 JS 控制 -->
+  <button id="btn-red" class="arcade-btn btn-red"></button>
+  <button id="btn-blue" class="arcade-btn btn-blue"></button>
+  <div class="keyboard-hint">電腦版可用左右方向鍵操作</div>
+</div>
 
-            <!-- 隨機倒數輸入區 -->
-            <div id="randomModeInputs" style="display: none;">
-                <div class="range-block">
-                    <h3>最短時間 (Min)</h3>
-                    <div class="input-group">
-                        <div class="input-wrapper"><input type="number" id="minDays" min="0" value="0"><label>天</label></div>
-                        <div class="input-wrapper"><input type="number" id="minHours" min="0" max="23" value="0"><label>時</label></div>
-                        <div class="input-wrapper"><input type="number" id="minMinutes" min="0" max="59" value="0"><label>分</label></div>
-                    </div>
-                </div>
+<!-- 輸入選項 -->
+<div class="input-area">
+  <label class="input-label">抽籤選項</label>
+  <textarea id="options-input">
+被當小公主寵愛
+被當小婊子爆草</textarea>
+</div>
 
-                <div class="range-block">
-                    <h3>最長時間 (Max)</h3>
-                    <div class="input-group">
-                        <div class="input-wrapper"><input type="number" id="maxDays" min="0" value="0"><label>天</label></div>
-                        <div class="input-wrapper"><input type="number" id="maxHours" min="0" max="23" value="0"><label>時</label></div>
-                        <div class="input-wrapper"><input type="number" id="maxMinutes" min="0" max="59" value="0"><label>分</label></div>
-                    </div>
-                </div>
-                
-                <button class="btn btn-random" onclick="startSetup()">🎲 生成隨機時間並倒數</button>
-            </div>
-        </div>
+<script>
+  // 狀態變數
+  let intervalId = null;
+  const screenText = document.getElementById('result-text');
+  const screenBox = document.getElementById('screen-box');
+  const inputField = document.getElementById('options-input');
+  
+  const btnRed = document.getElementById('btn-red');
+  const btnBlue = document.getElementById('btn-blue');
 
-        <!-- 倒數模式 (Timer View) -->
-        <div id="timerView" style="display: none;">
-            <div id="statusText">距離結束還有</div>
-            <div class="timer-display" id="timerDisplay">00:00:00</div>
-            
-            <div class="share-section" id="shareSection">
-                <p style="margin-bottom: 10px; font-size: 0.9rem; color: #666;">
-                    複製連結分享給朋友，時間將會同步：
-                </p>
-                <button class="btn btn-outline" onclick="copyLink()">🔗 複製分享連結</button>
-                <button class="btn btn-secondary" onclick="resetTimer()">❌ 重置/結束</button>
-            </div>
-        </div>
-    </div>
+  // 追蹤按鈕按壓狀態
+  let isRedPressed = false;
+  let isBluePressed = false;
 
-    <div id="toast" class="toast">連結已複製！</div>
+  // --- 核心抽籤邏輯 ---
+  function startLottery(mode = 'normal') {
+    // 1. 取得選項
+    const rawText = inputField.value;
+    let options = rawText.split(/[\n,，]+/).map(item => item.trim()).filter(item => item !== '');
 
-    <script>
-        let intervalId;
-        let currentMode = 'fixed'; // 'fixed' or 'random'
-        const setupView = document.getElementById('setupView');
-        const timerView = document.getElementById('timerView');
-        const timerDisplay = document.getElementById('timerDisplay');
-        const statusText = document.getElementById('statusText');
-        const shareSection = document.getElementById('shareSection');
-        const toast = document.getElementById('toast');
+    if (options.length === 0) {
+      screenText.innerText = "沒有選項!";
+      screenText.style.color = "red";
+      return;
+    }
 
-        // 1. 初始化檢查網址參數
-        window.addEventListener('load', () => {
-            const params = new URLSearchParams(window.location.search);
-            const endTime = params.get('end');
-            if (endTime) {
-                runTimer(parseInt(endTime));
-            } else {
-                showSetup();
-            }
-        });
+    // 清除舊的動畫或計時器
+    if (intervalId) clearInterval(intervalId);
+    screenText.classList.remove('text-boom');
+    
+    // 設定模式外觀
+    if (mode === 'jackpot') {
+      screenBox.classList.add('jackpot-mode');
+      screenText.style.color = "#ff00de"; // 紫紅色文字
+    } else {
+      screenBox.classList.remove('jackpot-mode');
+      screenText.style.color = "#33ff00"; // 一般綠色
+    }
 
-        // 切換模式函數
-        function switchMode(mode) {
-            currentMode = mode;
-            // 更新按鈕樣式
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if(btn.dataset.mode === mode) btn.classList.add('active');
-            });
+    // 2. 跑馬燈動畫
+    let counter = 0;
+    // Jackpot 模式跑比較快
+    const speed = mode === 'jackpot' ? 40 : 80;
+    
+    intervalId = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * options.length);
+      screenText.innerText = options[randomIndex];
+      counter++;
 
-            // 切換顯示區塊
-            if (mode === 'fixed') {
-                document.getElementById('fixedModeInputs').style.display = 'block';
-                document.getElementById('randomModeInputs').style.display = 'none';
-                timerDisplay.style.color = 'var(--primary-color)';
-            } else {
-                document.getElementById('fixedModeInputs').style.display = 'none';
-                document.getElementById('randomModeInputs').style.display = 'block';
-                timerDisplay.style.color = 'var(--secondary-color)';
-            }
-        }
+      // 跑個 25 次後停下
+      if (counter > 25) {
+        clearInterval(intervalId);
+        intervalId = null;
+        showFinalResult(options, mode);
+      }
+    }, speed); 
+  }
 
-        // 處理輸入並開始倒數
-        function startSetup() {
-            let totalMs = 0;
+  function showFinalResult(options, mode) {
+    const finalIndex = Math.floor(Math.random() * options.length);
+    screenText.innerText = options[finalIndex];
+    
+    if (mode === 'jackpot') {
+      // 中大獎特效：文字放大 + 螢幕持續閃爍幾秒後停止
+      screenText.classList.add('text-boom');
+      setTimeout(() => {
+        screenBox.classList.remove('jackpot-mode');
+        screenText.classList.remove('text-boom');
+        screenText.style.color = "#33ff00"; // 回復正常
+      }, 3000);
+    } else {
+      // 一般閃爍
+      screenText.style.color = "#fff";
+      setTimeout(() => {
+        screenText.style.color = "#33ff00";
+      }, 200);
+    }
+  }
 
-            if (currentMode === 'fixed') {
-                // 一般模式計算
-                const d = parseInt(document.getElementById('fixDays').value) || 0;
-                const h = parseInt(document.getElementById('fixHours').value) || 0;
-                const m = parseInt(document.getElementById('fixMinutes').value) || 0;
-                
-                if (d===0 && h===0 && m===0) return alert("請輸入時間！");
-                totalMs = toMs(d, h, m);
+  // --- 按鈕事件處理 (支援滑鼠、觸控、鍵盤) ---
 
-            } else {
-                // 隨機模式計算
-                const minD = parseInt(document.getElementById('minDays').value) || 0;
-                const minH = parseInt(document.getElementById('minHours').value) || 0;
-                const minM = parseInt(document.getElementById('minMinutes').value) || 0;
-                
-                const maxD = parseInt(document.getElementById('maxDays').value) || 0;
-                const maxH = parseInt(document.getElementById('maxHours').value) || 0;
-                const maxM = parseInt(document.getElementById('maxMinutes').value) || 0;
+  function checkButtons() {
+    if (isRedPressed && isBluePressed) {
+      startLottery('jackpot');
+    } else if (isRedPressed || isBluePressed) {
+      // 只有當尚未開始跑的時候才啟動一般模式，避免 Jackpot 被蓋掉
+      // 但如果已經在跑 'normal'，這裡重複觸發沒關係，可以重置
+      // 如果已經在跑 'jackpot'，則忽略單按鍵
+      if (!screenBox.classList.contains('jackpot-mode')) {
+         startLottery('normal');
+      }
+    }
+  }
 
-                const minMs = toMs(minD, minH, minM);
-                const maxMs = toMs(maxD, maxH, maxM);
+  function setBtnState(color, pressed) {
+    const btn = color === 'red' ? btnRed : btnBlue;
+    
+    // 視覺上下壓效果
+    if (pressed) btn.classList.add('active');
+    else btn.classList.remove('active');
 
-                if (maxMs <= 0 && minMs <= 0) return alert("請至少輸入一點時間！");
-                
-                // 防呆：如果使用者 Max 設得比 Min 小，自動交換
-                let finalMin = Math.min(minMs, maxMs);
-                let finalMax = Math.max(minMs, maxMs);
+    // 更新狀態
+    if (color === 'red') isRedPressed = pressed;
+    if (color === 'blue') isBluePressed = pressed;
 
-                // 隨機取出區間內的一個毫秒數
-                totalMs = Math.floor(Math.random() * (finalMax - finalMin + 1)) + finalMin;
-            }
+    // 如果是按下動作，檢查是否觸發抽籤
+    if (pressed) checkButtons();
+  }
 
-            const now = new Date().getTime();
-            const targetTime = now + totalMs;
+  // 1. 滑鼠/觸控事件綁定 helper
+  function bindEvents(btn, color) {
+    const start = (e) => { 
+      e.preventDefault(); // 防止手機長按選取文字
+      setBtnState(color, true); 
+    };
+    const end = (e) => { 
+      e.preventDefault();
+      setBtnState(color, false); 
+    };
 
-            // 嘗試更新網址
-            try {
-                const newUrl = `${window.location.pathname}?end=${targetTime}`;
-                window.history.pushState({path: newUrl}, '', newUrl);
-            } catch (e) {
-                console.warn("Local testing: URL pushState blocked.");
-            }
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('touchstart', start);
 
-            runTimer(targetTime);
-        }
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+    btn.addEventListener('touchend', end);
+  }
 
-        function toMs(d, h, m) {
-            return ((d * 24 * 60 * 60) + (h * 60 * 60) + (m * 60)) * 1000;
-        }
+  bindEvents(btnRed, 'red');
+  bindEvents(btnBlue, 'blue');
 
-        function runTimer(endTime) {
-            setupView.style.display = 'none';
-            timerView.style.display = 'block';
-            shareSection.style.display = 'block';
-            
-            updateDisplay(endTime);
-            if (intervalId) clearInterval(intervalId);
-            intervalId = setInterval(() => updateDisplay(endTime), 1000);
-        }
+  // 2. 鍵盤事件綁定 (方便電腦測試：左=紅, 右=藍)
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return; // 防止長按連發
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setBtnState('red', true);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setBtnState('blue', true);
+  });
 
-        function updateDisplay(endTime) {
-            const now = new Date().getTime();
-            const distance = endTime - now;
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setBtnState('red', false);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setBtnState('blue', false);
+  });
 
-            if (distance < 0) {
-                clearInterval(intervalId);
-                timerDisplay.textContent = "時間到！";
-                statusText.textContent = "🎉 倒數結束";
-                timerDisplay.style.color = "#ef4444";
-                return;
-            }
+</script>
 
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-            let timeString = "";
-            if (days > 0) timeString += `${days}天 `;
-            timeString += `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
-
-            timerDisplay.textContent = timeString;
-            document.title = timeString + " - 倒數中";
-        }
-
-        function pad(num) {
-            return num.toString().padStart(2, '0');
-        }
-
-        function resetTimer() {
-            if (confirm('確定要結束目前的倒數並重置嗎？')) {
-                clearInterval(intervalId);
-                try {
-                    window.history.pushState({}, '', window.location.pathname);
-                } catch (e) {}
-                
-                document.title = "同步倒數計時器";
-                statusText.textContent = "距離結束還有";
-                
-                // 恢復預設顏色
-                timerDisplay.style.color = currentMode === 'random' ? 'var(--secondary-color)' : 'var(--primary-color)';
-                
-                showSetup();
-            }
-        }
-
-        function showSetup() {
-            setupView.style.display = 'block';
-            timerView.style.display = 'none';
-        }
-
-        function copyLink() {
-            if (!navigator.clipboard) return alert("請手動複製網址列。");
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                toast.classList.add('show');
-                setTimeout(() => toast.classList.remove('show'), 2000);
-            }).catch(() => alert('複製失敗，請手動複製'));
-        }
-    </script>
 </body>
 </html>
+
+
+
