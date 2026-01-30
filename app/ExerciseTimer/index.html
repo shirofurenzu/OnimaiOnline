@@ -30,8 +30,11 @@
         }
 
         /* 狀態背景色類別 */
-        .bg-work { background-color: #064e3b; } /* Emerald 900 */
-        .bg-rest { background-color: #7c2d12; } /* Orange 900 */
+        .bg-work { background-color: #064e3b; } /* Emerald 900 (深綠) */
+        
+        /* 修改為柔和黃色 (Yellow 700/800 混合) */
+        .bg-rest { background-color: #a16207; } /* 類似芥末黃，深色背景白字依然清晰 */
+        
         .bg-idle { background-color: #0f172a; } /* Slate 900 */
     </style>
 </head>
@@ -39,7 +42,7 @@
 
     <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
         
-        <!-- Header -->
+        <!-- Header: 置中且移除圓點 -->
         <div class="bg-slate-900 p-4 text-center border-b border-slate-700">
             <h1 class="text-xl font-bold text-slate-100">運動計時器</h1>
         </div>
@@ -85,7 +88,7 @@
                 </div>
                 <div>
                     <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">休息時間 (秒)</label>
-                    <input type="number" id="restInput" value="10" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
+                    <input type="number" id="restInput" value="10" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition">
                 </div>
             </div>
         </div>
@@ -126,16 +129,18 @@
         const resetBtn = document.getElementById('resetBtn');
         const mainBody = document.getElementById('mainBody');
         const settingsPanel = document.getElementById('settingsPanel');
-
+        
         // State Variables
         let timer = null;
-        // Removed transitionTimeout
         let isRunning = false;
         let mode = 'idle'; // idle, work, rest
         let currentTime = 30;
         let totalSets = 1;
         let totalSeconds = 0;
         
+        // Wake Lock Variable
+        let wakeLock = null;
+
         // Settings (initially from inputs)
         let workTime = 30;
         let restTime = 10;
@@ -143,7 +148,35 @@
         // Web Audio API Context
         let audioCtx = null;
 
-        // Initialize Audio Context (Must be triggered by user interaction)
+        // --- Screen Wake Lock API ---
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock is active');
+                }
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock !== null) {
+                await wakeLock.release();
+                wakeLock = null;
+                console.log('Wake Lock released manually');
+            }
+        }
+
+        // Re-acquire lock if visibility changes (user switches back to tab)
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+        // ---------------------------
+
+        // Initialize Audio Context
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -172,7 +205,7 @@
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.1);
             } else if (type === 'end') {
-                // Long beep (0 / Switch)
+                // Long beep (Switch)
                 oscillator.type = 'square'; // More aggressive sound
                 oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
                 gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
@@ -213,7 +246,8 @@
             } else if (mode === 'rest') {
                 mainBody.classList.add('bg-rest');
                 statusBadge.textContent = "☕ 休息";
-                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-orange-500 text-white tracking-wider uppercase shadow-lg";
+                // 使用 Yellow-600/700 風格的顏色，搭配白字
+                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-yellow-600 text-white tracking-wider uppercase shadow-lg";
                 currentTime = restTime;
             } else {
                 mainBody.classList.add('bg-idle');
@@ -230,11 +264,10 @@
 
             // Time logic
             if (currentTime === 1) {
-                // Transition moment (Replaces 0s logic)
-                // Play Long Beep immediately at the switch
+                // 1. Play Tone for Switch
                 playTone('end');
                 
-                // Switch Mode immediately
+                // 2. Switch Mode Immediately
                 if (mode === 'work') {
                     setMode('rest');
                 } else {
@@ -242,8 +275,6 @@
                     setCounter.textContent = totalSets;
                     setMode('work');
                 }
-                // The new time is set by setMode (e.g., 30) and displayed immediately.
-                // It will stay for 1 second until the next tick().
             } else if (currentTime > 1) {
                 currentTime--;
                 updateDisplay();
@@ -255,14 +286,17 @@
             }
         }
 
-        function toggleTimer() {
+        async function toggleTimer() {
             initAudio(); // Initialize audio context on first interaction
 
             if (isRunning) {
                 // Pause Logic
                 clearInterval(timer);
-                // Removed clearTimeout
                 isRunning = false;
+                
+                // Release screen lock
+                await releaseWakeLock();
+
                 startBtn.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -278,6 +312,10 @@
 
             } else {
                 // Start Logic
+                
+                // Request screen lock
+                await requestWakeLock();
+
                 if (mode === 'idle') {
                     workTime = parseInt(workInput.value) || 30;
                     restTime = parseInt(restInput.value) || 10;
@@ -310,12 +348,14 @@
         startBtn.addEventListener('click', toggleTimer);
         timerDisplay.addEventListener('click', toggleTimer); // Click on number to toggle
 
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener('click', async () => {
             clearInterval(timer);
-            // Removed clearTimeout
             isRunning = false;
             mode = 'idle';
             
+            // Release screen lock
+            await releaseWakeLock();
+
             // Reset UI
             startBtn.innerHTML = `
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -355,3 +395,5 @@
     </script>
 </body>
 </html>
+
+
