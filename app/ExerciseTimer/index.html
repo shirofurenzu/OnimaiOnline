@@ -30,170 +30,405 @@
         }
 
         /* 狀態背景色類別 */
-        .bg-work { background-color: #064e3b; } /* Emerald 900 */
-        .bg-rest { background-color: #7c2d12; } /* Orange 900 */
+        .bg-work { background-color: #064e3b; } /* Emerald 900 (深綠) */
+        .bg-rest { background-color: #a16207; } /* Yellow 700 (芥末黃) */
+        .bg-prep { background-color: #1e3a8a; } /* Blue 900 (深藍 - 準備期) */
         .bg-idle { background-color: #0f172a; } /* Slate 900 */
+
+        /* Modal 動畫 */
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .modal.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.hidden .modal-content {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body id="mainBody" class="bg-idle min-h-screen flex items-center justify-center p-4">
 
-    <div class="w-full max-w-md bg-slate-800 rounded-2xl shadow-2xl overflow-hidden border border-slate-700">
+    <!-- 主容器：在大螢幕上放寬 max-w -->
+    <div class="w-full max-w-md md:max-w-3xl lg:max-w-4xl bg-slate-800 rounded-3xl shadow-2xl overflow-hidden border border-slate-700 transition-all duration-300">
         
-        <!-- Header -->
-        <div class="bg-slate-900 p-4 text-center border-b border-slate-700">
-            <h1 class="text-xl font-bold text-slate-100">運動計時器</h1>
+        <!-- Header: 標題置中 + 設定按鈕 -->
+        <div class="bg-slate-900 p-4 md:p-6 relative flex justify-center items-center border-b border-slate-700">
+            <h1 class="text-xl md:text-3xl font-bold text-slate-100 tracking-wide">運動計時器</h1>
+            
+            <!-- 設定按鈕 -->
+            <button id="settingsBtn" class="absolute right-4 p-2 text-slate-400 hover:text-white transition rounded-full hover:bg-slate-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 md:h-8 md:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
         </div>
 
         <!-- Timer Display Area -->
-        <div class="p-8 text-center relative">
-            <!-- Status Badge -->
-            <div class="mb-4">
-                <span id="statusBadge" class="px-4 py-1.5 rounded-full text-sm font-bold bg-slate-600 text-slate-200 tracking-wider uppercase">
-                    準備就緒
+        <div class="p-6 md:p-12 text-center relative flex flex-col justify-center min-h-[50vh] md:min-h-[60vh]">
+            
+            <!-- 上方資訊區 (狀態 + 運動名稱) -->
+            <!-- 修改：使用 Flex 讓左右並列 (flex-row)，gap 調整間距 -->
+            <div class="mb-6 md:mb-10 flex flex-wrap items-center justify-center gap-4 md:gap-6 min-h-[4rem]">
+                <!-- 修改：預設隱藏 (opacity-0)，無預設文字 -->
+                <span id="statusBadge" class="inline-block px-6 py-2 rounded-full text-base md:text-xl font-bold bg-slate-600 text-slate-200 tracking-wider uppercase shadow-md transition-all opacity-0">
                 </span>
+                
+                <!-- 運動項目名稱顯示 -->
+                <!-- 增加 hidden class 預設隱藏，確保沒有運動時不佔位 -->
+                <div id="exerciseNameDisplay" class="hidden text-xl md:text-3xl font-bold text-blue-200 tracking-wide opacity-0 transition-opacity duration-500">
+                    <!-- JS 動態填入 -->
+                </div>
             </div>
 
-            <!-- Main Timer -->
-            <div class="relative z-10">
-                <div id="timerDisplay" class="timer-font text-8xl font-bold tracking-tighter text-white drop-shadow-lg cursor-pointer hover:opacity-90 transition-opacity select-none" title="點擊暫停/開始">
+            <!-- Main Timer: 響應式字體 -->
+            <div class="relative z-10 my-4">
+                <div id="timerDisplay" class="timer-font text-8xl md:text-9xl lg:text-[12rem] leading-none font-bold tracking-tighter text-white drop-shadow-2xl cursor-pointer hover:opacity-90 transition-opacity select-none" title="點擊暫停/開始">
                     00:30
                 </div>
             </div>
 
             <!-- Counters Grid -->
-            <div class="mt-8 grid grid-cols-2 gap-4 border-t border-slate-700/50 pt-6">
+            <div class="mt-8 md:mt-12 grid grid-cols-2 gap-8 border-t border-slate-700/50 pt-8 max-w-2xl mx-auto w-full">
                 <!-- Set Counter -->
                 <div class="flex flex-col items-center justify-center">
-                    <span class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">目前組數</span>
-                    <span id="setCounter" class="text-emerald-400 text-4xl font-bold timer-font">1</span>
+                    <span class="text-slate-400 text-sm md:text-lg font-bold uppercase tracking-wider mb-2">目前組數</span>
+                    <span id="setCounter" class="text-emerald-400 text-4xl md:text-6xl font-bold timer-font">1</span>
                 </div>
                 
                 <!-- Total Time Display -->
                 <div class="flex flex-col items-center justify-center border-l border-slate-700/50">
-                    <span class="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">總時間</span>
-                    <span id="totalTimeDisplay" class="text-slate-300 text-4xl font-bold timer-font">00:00</span>
+                    <span class="text-slate-400 text-sm md:text-lg font-bold uppercase tracking-wider mb-2">總時間</span>
+                    <span id="totalTimeDisplay" class="text-slate-300 text-4xl md:text-6xl font-bold timer-font">00:00</span>
                 </div>
             </div>
         </div>
 
-        <!-- Settings Section (Collapsible technically, but usually visible when stopped) -->
-        <div id="settingsPanel" class="px-8 pb-4 transition-all duration-300">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">運動時間 (秒)</label>
-                    <input type="number" id="workInput" value="30" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-1 uppercase tracking-wider">休息時間 (秒)</label>
-                    <input type="number" id="restInput" value="10" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition">
-                </div>
-            </div>
-        </div>
-
-        <!-- Controls -->
-        <div class="p-6 bg-slate-900 border-t border-slate-700 grid grid-cols-2 gap-4">
-            <button id="startBtn" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <!-- Controls (Bottom Bar) -->
+        <div class="p-6 md:p-8 bg-slate-900 border-t border-slate-700 grid grid-cols-2 gap-6">
+            <button id="startBtn" class="col-span-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-5 md:py-6 text-xl rounded-2xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 開始
             </button>
             
-            <button id="resetBtn" class="col-span-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-4 rounded-xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button id="resetBtn" class="col-span-1 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold py-5 md:py-6 text-xl rounded-2xl shadow-lg transform active:scale-95 transition flex items-center justify-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 重置
             </button>
         </div>
-        
-        <!-- Volume Indicator -->
-        <div class="text-center pb-2 bg-slate-900">
-            <p class="text-xs text-slate-500">提示：請開啟聲音以聽取倒數提示音</p>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div class="modal-content bg-slate-800 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-600 flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-900 rounded-t-2xl">
+                <h2 class="text-2xl font-bold text-white">設定</h2>
+                <button id="closeSettingsBtn" class="text-slate-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-8 flex-1">
+                <!-- Time Settings -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2 uppercase tracking-wider">運動時間 (秒)</label>
+                        <input type="number" id="workInput" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-slate-400 mb-2 uppercase tracking-wider">休息時間 (秒)</label>
+                        <input type="number" id="restInput" min="1" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-center text-xl focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    </div>
+                </div>
+
+                <!-- Toggles -->
+                <div class="space-y-4 bg-slate-900/50 p-4 rounded-xl">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-lg font-bold text-white">10秒前置準備</span>
+                            <p class="text-xs text-slate-400">正式開始前增加倒數</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="prepToggle" class="sr-only peer">
+                            <div class="w-14 h-7 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between border-t border-slate-700 pt-4">
+                        <div>
+                            <span class="text-lg font-bold text-white">螢幕恆亮</span>
+                            <p class="text-xs text-slate-400">防止手機自動休眠 (需瀏覽器支援)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="wakeLockToggle" class="sr-only peer">
+                            <div class="w-14 h-7 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Exercise List -->
+                <div>
+                    <label class="block text-sm text-slate-400 mb-2 uppercase tracking-wider">自訂運動循環清單 (一行一個)</label>
+                    <!-- 修改：移除 placeholder 避免誤解 -->
+                    <textarea id="exerciseListInput" rows="5" class="w-full bg-slate-700 text-white border border-slate-600 rounded-lg p-3 text-lg leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    <p class="text-xs text-slate-500 mt-2">開始運動後，會依據組數順序顯示這些項目。若空白則不顯示。</p>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-700 bg-slate-900 rounded-b-2xl">
+                <button id="saveSettingsBtn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition">
+                    儲存並返回
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // DOM Elements
+        // --- DOM Elements ---
         const timerDisplay = document.getElementById('timerDisplay');
         const statusBadge = document.getElementById('statusBadge');
         const setCounter = document.getElementById('setCounter');
         const totalTimeDisplay = document.getElementById('totalTimeDisplay');
-        const workInput = document.getElementById('workInput');
-        const restInput = document.getElementById('restInput');
+        const exerciseNameDisplay = document.getElementById('exerciseNameDisplay');
         const startBtn = document.getElementById('startBtn');
         const resetBtn = document.getElementById('resetBtn');
         const mainBody = document.getElementById('mainBody');
-        const settingsPanel = document.getElementById('settingsPanel');
+        
+        // Modal Elements
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        
+        // Input Elements
+        const workInput = document.getElementById('workInput');
+        const restInput = document.getElementById('restInput');
+        const prepToggle = document.getElementById('prepToggle');
+        const wakeLockToggle = document.getElementById('wakeLockToggle');
+        const exerciseListInput = document.getElementById('exerciseListInput');
 
-        // State Variables
+        // --- State Variables ---
         let timer = null;
-        // Removed transitionTimeout
         let isRunning = false;
-        let mode = 'idle'; // idle, work, rest
+        let mode = 'idle'; // idle, prep, work, rest
         let currentTime = 30;
         let totalSets = 1;
         let totalSeconds = 0;
-        
-        // Settings (initially from inputs)
-        let workTime = 30;
-        let restTime = 10;
-
-        // Web Audio API Context
+        let wakeLock = null;
         let audioCtx = null;
 
-        // Initialize Audio Context (Must be triggered by user interaction)
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // --- User Settings (Default) ---
+        let settings = {
+            workTime: 30,
+            restTime: 10,
+            prepEnabled: true,
+            wakeLockEnabled: true,
+            exercises: []
+        };
+
+        // --- Storage Functions ---
+        function loadSettings() {
+            const saved = localStorage.getItem('timerSettings');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    settings = { ...settings, ...parsed }; // Merge
+                } catch (e) { console.error('Settings load error', e); }
             }
+            // Populate Inputs
+            workInput.value = settings.workTime;
+            restInput.value = settings.restTime;
+            prepToggle.checked = settings.prepEnabled;
+            wakeLockToggle.checked = settings.wakeLockEnabled;
+            exerciseListInput.value = settings.exercises.join('\n');
+            
+            // Initial Display update
+            currentTime = settings.workTime;
+            timerDisplay.textContent = formatTime(currentTime);
         }
 
-        // Sound Synthesis Function
-        function playTone(type) {
-            if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+        function saveSettings() {
+            // Read Inputs
+            settings.workTime = parseInt(workInput.value) || 30;
+            settings.restTime = parseInt(restInput.value) || 10;
+            settings.prepEnabled = prepToggle.checked;
+            settings.wakeLockEnabled = wakeLockToggle.checked;
+            
+            // Parse Exercise List
+            const rawList = exerciseListInput.value.trim();
+            settings.exercises = rawList ? rawList.split('\n').map(s => s.trim()).filter(s => s) : [];
 
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-
-            if (type === 'tick') {
-                // Short beep (3, 2, 1)
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.1);
-            } else if (type === 'end') {
-                // Long beep (0 / Switch)
-                oscillator.type = 'square'; // More aggressive sound
-                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // A4
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.6);
-            }
+            localStorage.setItem('timerSettings', JSON.stringify(settings));
         }
 
-        // Format Time mm:ss
+        // --- Helper Functions ---
         function formatTime(seconds) {
             const m = Math.floor(seconds / 60).toString().padStart(2, '0');
             const s = (seconds % 60).toString().padStart(2, '0');
             return `${m}:${s}`;
         }
 
-        // UI Update Functions
+        function getExerciseName(setNum) {
+            if (!settings.exercises || settings.exercises.length === 0) return '';
+            // 0-indexed index = (setNum - 1) % length
+            const index = (setNum - 1) % settings.exercises.length;
+            return settings.exercises[index];
+        }
+
+        // --- Audio & Wake Lock ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(type) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            if (type === 'tick') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'end') {
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.6);
+            } else if (type === 'prep') {
+                // Lower pitch for prep countdown
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(600, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        async function requestWakeLock() {
+            if (!settings.wakeLockEnabled) return;
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock active');
+                }
+            } catch (err) { 
+                console.warn('無法啟用螢幕喚醒鎖定:', err.message);
+            }
+        }
+
+        async function releaseWakeLock() {
+            if (wakeLock !== null) {
+                await wakeLock.release();
+                wakeLock = null;
+            }
+        }
+
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible' && isRunning) {
+                requestWakeLock();
+            }
+        });
+
+        // --- Core Timer Logic ---
+        function setMode(newMode) {
+            mode = newMode;
+            // Clear all special backgrounds first
+            mainBody.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ";
+
+            // Helper to show/hide name
+            const showName = (text, colorClass) => {
+                exerciseNameDisplay.textContent = text;
+                exerciseNameDisplay.className = `text-xl md:text-3xl font-bold ${colorClass} tracking-wide transition-opacity duration-500`;
+                exerciseNameDisplay.classList.remove('hidden');
+                setTimeout(() => exerciseNameDisplay.classList.remove('opacity-0'), 10);
+            };
+
+            const hideName = () => {
+                exerciseNameDisplay.classList.add('hidden'); // Collapse space for centering
+                exerciseNameDisplay.classList.add('opacity-0');
+                exerciseNameDisplay.textContent = '';
+            };
+
+            // 移除所有模式特定的 opacity-0 (因為 idle 會加回去)
+            statusBadge.classList.remove('opacity-0');
+
+            if (mode === 'prep') {
+                mainBody.classList.add('bg-prep');
+                statusBadge.textContent = "準備";
+                statusBadge.className = "inline-block px-6 py-2 rounded-full text-base md:text-xl font-bold bg-blue-600 text-white tracking-wider uppercase shadow-md transition-all";
+                
+                // 準備期間也顯示「下一組」是哪個運動
+                const nextName = getExerciseName(1);
+                if (nextName) {
+                    showName("下一組: " + nextName, "text-blue-200");
+                } else {
+                    hideName();
+                }
+
+                currentTime = 10;
+            } else if (mode === 'work') {
+                mainBody.classList.add('bg-work');
+                statusBadge.textContent = "🔥 運動中";
+                statusBadge.className = "inline-block px-6 py-2 rounded-full text-base md:text-xl font-bold bg-emerald-500 text-white tracking-wider uppercase shadow-md transition-all";
+                
+                // 顯示當前運動名稱
+                const name = getExerciseName(totalSets);
+                if (name) {
+                    showName(name, "text-blue-200");
+                } else {
+                    hideName();
+                }
+                
+                currentTime = settings.workTime;
+            } else if (mode === 'rest') {
+                mainBody.classList.add('bg-rest');
+                statusBadge.textContent = "☕ 休息";
+                statusBadge.className = "inline-block px-6 py-2 rounded-full text-base md:text-xl font-bold bg-yellow-600 text-white tracking-wider uppercase shadow-md transition-all";
+                
+                // 修改：休息時顯示「下一組：XXXX」
+                const nextName = getExerciseName(totalSets + 1);
+                if (nextName) {
+                    showName("下一組: " + nextName, "text-slate-300");
+                } else {
+                    hideName();
+                }
+                
+                currentTime = settings.restTime;
+            } else {
+                mainBody.classList.add('bg-idle');
+                // Idle 狀態不顯示文字並隱藏
+                statusBadge.textContent = "";
+                statusBadge.classList.add('opacity-0');
+                hideName();
+            }
+            updateDisplay();
+        }
+
         function updateDisplay() {
             timerDisplay.textContent = formatTime(currentTime);
-            
-            // Urgency effects (Visual)
+            // Visual urgency
             if (currentTime <= 3 && isRunning && currentTime > 0) {
                 timerDisplay.classList.add('urgent');
             } else {
@@ -201,156 +436,142 @@
             }
         }
 
-        function setMode(newMode) {
-            mode = newMode;
-            mainBody.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ";
-
-            if (mode === 'work') {
-                mainBody.classList.add('bg-work');
-                statusBadge.textContent = "🔥 運動中";
-                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-500 text-white tracking-wider uppercase shadow-lg";
-                currentTime = workTime;
-            } else if (mode === 'rest') {
-                mainBody.classList.add('bg-rest');
-                statusBadge.textContent = "☕ 休息";
-                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-orange-500 text-white tracking-wider uppercase shadow-lg";
-                currentTime = restTime;
-            } else {
-                mainBody.classList.add('bg-idle');
-                statusBadge.textContent = "準備就緒";
-                statusBadge.className = "px-4 py-1.5 rounded-full text-sm font-bold bg-slate-600 text-slate-200 tracking-wider uppercase";
-            }
-            updateDisplay();
-        }
-
-        // Timer Logic
         function tick() {
             totalSeconds++;
             totalTimeDisplay.textContent = formatTime(totalSeconds);
 
-            // Time logic
             if (currentTime === 1) {
-                // Transition moment (Replaces 0s logic)
-                // Play Long Beep immediately at the switch
+                // Switching logic
                 playTone('end');
                 
-                // Switch Mode immediately
-                if (mode === 'work') {
+                if (mode === 'prep') {
+                    setMode('work');
+                } else if (mode === 'work') {
                     setMode('rest');
-                } else {
+                } else if (mode === 'rest') {
                     totalSets++;
                     setCounter.textContent = totalSets;
                     setMode('work');
                 }
-                // The new time is set by setMode (e.g., 30) and displayed immediately.
-                // It will stay for 1 second until the next tick().
             } else if (currentTime > 1) {
                 currentTime--;
                 updateDisplay();
                 
-                // Sound logic for 3, 2, 1
+                // Sound logic
                 if (currentTime <= 3) {
-                    playTone('tick');
+                    playTone(mode === 'prep' ? 'prep' : 'tick');
                 }
             }
         }
 
-        function toggleTimer() {
-            initAudio(); // Initialize audio context on first interaction
-
+        async function toggleTimer() {
+            initAudio();
+            
             if (isRunning) {
-                // Pause Logic
+                // Pause
                 clearInterval(timer);
-                // Removed clearTimeout
                 isRunning = false;
+                await releaseWakeLock();
+                settingsBtn.disabled = false; // Enable settings when paused
+
                 startBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg> 繼續`;
-                startBtn.classList.remove('bg-red-600', 'hover:bg-red-500');
-                startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-                
-                // Enable inputs while paused
-                workInput.disabled = false;
-                restInput.disabled = false;
-                settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
+                startBtn.classList.replace('bg-amber-600', 'bg-emerald-600');
+                startBtn.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
 
             } else {
-                // Start Logic
+                // Start
+                settingsBtn.disabled = true; // Disable settings while running
+                await requestWakeLock();
+
+                // If starting from idle
                 if (mode === 'idle') {
-                    workTime = parseInt(workInput.value) || 30;
-                    restTime = parseInt(restInput.value) || 10;
                     totalSets = 1;
                     setCounter.textContent = totalSets;
-                    setMode('work');
-                } else {
-                    workTime = parseInt(workInput.value) || 30;
-                    restTime = parseInt(restInput.value) || 10;
+                    
+                    if (settings.prepEnabled) {
+                        setMode('prep');
+                    } else {
+                        setMode('work');
+                    }
                 }
 
                 isRunning = true;
                 timer = setInterval(tick, 1000);
-                
+
                 startBtn.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg> 暫停`;
-                startBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
-                startBtn.classList.add('bg-amber-600', 'hover:bg-amber-500'); // Pause color
-
-                // Disable inputs while running
-                workInput.disabled = true;
-                restInput.disabled = true;
-                settingsPanel.classList.add('opacity-50', 'pointer-events-none');
+                startBtn.classList.replace('bg-emerald-600', 'bg-amber-600');
+                startBtn.classList.replace('hover:bg-emerald-500', 'hover:bg-amber-500');
             }
         }
 
-        // Button Actions
-        startBtn.addEventListener('click', toggleTimer);
-        timerDisplay.addEventListener('click', toggleTimer); // Click on number to toggle
-
-        resetBtn.addEventListener('click', () => {
+        // --- Shared Reset Logic ---
+        async function resetApp() {
             clearInterval(timer);
-            // Removed clearTimeout
             isRunning = false;
+            await releaseWakeLock();
+            settingsBtn.disabled = false;
+
             mode = 'idle';
+            setMode('idle'); // Resets visual state
             
-            // Reset UI
+            // Reset Values
+            currentTime = settings.workTime;
+            totalSets = 1;
+            setCounter.textContent = totalSets;
+            totalSeconds = 0;
+            totalTimeDisplay.textContent = "00:00";
+            
+            // Update UI
+            timerDisplay.textContent = formatTime(currentTime);
             startBtn.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg> 開始`;
-            startBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500');
-            startBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-            
-            // Reset Values
-            workTime = parseInt(workInput.value) || 30;
-            currentTime = workTime;
-            
-            totalSets = 1;
-            setCounter.textContent = totalSets;
+            startBtn.classList.replace('bg-amber-600', 'bg-emerald-600');
+            startBtn.classList.replace('hover:bg-amber-500', 'hover:bg-emerald-500');
+        }
 
-            totalSeconds = 0;
-            totalTimeDisplay.textContent = "00:00";
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', toggleTimer);
+        timerDisplay.addEventListener('click', toggleTimer);
+        
+        resetBtn.addEventListener('click', resetApp);
 
-            setMode('idle'); 
-            timerDisplay.textContent = formatTime(workTime);
-
-            // Re-enable inputs
-            workInput.disabled = false;
-            restInput.disabled = false;
-            settingsPanel.classList.remove('opacity-50', 'pointer-events-none');
+        // Settings Modal Interaction
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
         });
 
-        // Initial setup
-        workInput.addEventListener('change', () => {
-            if (!isRunning && mode === 'idle') {
-                currentTime = parseInt(workInput.value) || 30;
-                updateDisplay();
+        closeSettingsBtn.addEventListener('click', () => {
+            // Re-load settings to discard changes if canceled (optional, but good UX)
+            loadSettings();
+            settingsModal.classList.add('hidden');
+        });
+
+        saveSettingsBtn.addEventListener('click', async () => {
+            saveSettings();
+            await resetApp(); // 儲存後直接重置，套用新設定並歸零
+            settingsModal.classList.add('hidden');
+        });
+
+        // Close modal on click outside
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                loadSettings();
+                settingsModal.classList.add('hidden');
             }
         });
+
+        // --- Init ---
+        loadSettings(); // Load from LocalStorage on startup
 
     </script>
 </body>
