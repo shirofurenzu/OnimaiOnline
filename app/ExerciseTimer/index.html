@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>運動計時器</title>
     
-    <!-- PWA Manifest -->
-    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,%7B%22name%22%3A%22%E9%81%8B%E5%8B%95%E8%A8%88%E6%99%82%E5%99%A8%22%2C%22short_name%22%3A%22%E8%A8%88%E6%99%82%E5%99%A8%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f172a%22%2C%22theme_color%22%3A%22%230f172a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fcdn-icons-png.flaticon.com%2F512%2F2928%2F2928750.png%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D'>
+    <!-- PWA 相關設定將由 JS 動態產生 -->
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- 預留 favicon 位置 -->
+    <link id="faviconLink" rel="icon" type="image/png" href="">
+    <link id="appleIconLink" rel="apple-touch-icon" href="">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -189,10 +191,13 @@
 
                     <!-- TTS -->
                     <div class="flex items-center justify-between border-t border-slate-700 pt-4">
-                        <div>
+                        <div class="flex-1">
                             <span class="text-lg font-bold text-white">語音播報</span>
-                            <p class="text-xs text-slate-400">朗讀下一個運動項目 (需開啟音量)</p>
+                            <p class="text-xs text-slate-400">朗讀下一個運動項目</p>
                         </div>
+                        <!-- Test Button -->
+                        <button id="testVoiceBtn" class="mr-3 text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-1.5 rounded transition">測試語音</button>
+                        
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="ttsToggle" class="sr-only peer">
                             <div class="w-14 h-7 bg-slate-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-purple-600"></div>
@@ -246,6 +251,52 @@
     </div>
 
     <script>
+        // *** 設定您的圖示 ***
+        // 建議將 icon.png 放在與 html 檔案同一個資料夾內
+        // 如果檔名不同，請修改下方的 'icon.png'
+        const ICON_URL = 'icon.png'; 
+
+        // --- PWA Setup Logic ---
+        (function setupPWA() {
+            // Update Favicon & Apple Touch Icon
+            const favicon = document.getElementById('faviconLink');
+            const appleIcon = document.getElementById('appleIconLink');
+            
+            if(favicon) favicon.href = ICON_URL;
+            if(appleIcon) appleIcon.href = ICON_URL;
+
+            // Generate Manifest Blob
+            const manifest = {
+                name: "運動計時器",
+                short_name: "計時器",
+                start_url: ".",
+                display: "standalone",
+                background_color: "#0f172a",
+                theme_color: "#0f172a",
+                icons: [
+                    {
+                        src: ICON_URL,
+                        sizes: "192x192",
+                        type: "image/png"
+                    },
+                    {
+                        src: ICON_URL,
+                        sizes: "512x512",
+                        type: "image/png"
+                    }
+                ]
+            };
+            const stringManifest = JSON.stringify(manifest);
+            const blob = new Blob([stringManifest], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            
+            // Inject Link
+            const link = document.createElement('link');
+            link.rel = 'manifest';
+            link.href = manifestURL;
+            document.head.appendChild(link);
+        })();
+
         // --- DOM Elements ---
         const timerDisplay = document.getElementById('timerDisplay');
         const progressBar = document.getElementById('progressBar');
@@ -272,6 +323,7 @@
         const ttsToggle = document.getElementById('ttsToggle');
         const wakeLockToggle = document.getElementById('wakeLockToggle');
         const exerciseListInput = document.getElementById('exerciseListInput');
+        const testVoiceBtn = document.getElementById('testVoiceBtn');
         
         const presetSelect = document.getElementById('presetSelect');
         const loadPresetBtn = document.getElementById('loadPresetBtn');
@@ -289,7 +341,7 @@
         let totalSeconds = 0;
         let wakeLock = null;
         let audioCtx = null;
-        let ttsTimeout = null; // To handle pause delay
+        let ttsTimeout = null; 
         
         // --- Defaults ---
         const DEFAULT_PRESETS = [];
@@ -304,6 +356,18 @@
             exercises: [],
             customPresets: []
         };
+
+        // --- Voices Management ---
+        let voices = [];
+        function populateVoices() {
+            if ('speechSynthesis' in window) {
+                voices = window.speechSynthesis.getVoices();
+            }
+        }
+        if ('speechSynthesis' in window) {
+            populateVoices();
+            window.speechSynthesis.onvoiceschanged = populateVoices;
+        }
 
         // --- Storage & Presets ---
         function loadSettings() {
@@ -412,13 +476,27 @@
             }
         }
 
+        function getBestVoice() {
+            if (voices.length === 0) return null;
+            let voice = voices.find(v => v.lang === 'zh-TW' || v.lang.replace('_', '-').includes('zh-TW'));
+            if (!voice) voice = voices.find(v => v.lang.includes('zh'));
+            return voice;
+        }
+
         function speak(text, callback) {
             if (!settings.soundEnabled || !settings.ttsEnabled) return;
+            doSpeak(text, callback);
+        }
+
+        function doSpeak(text, callback) {
             if ('speechSynthesis' in window) {
-                // IMPORTANT: cancel() removes any queued utterances
                 window.speechSynthesis.cancel();
                 
                 const utterance = new SpeechSynthesisUtterance(text);
+                const bestVoice = getBestVoice();
+                if (bestVoice) {
+                    utterance.voice = bestVoice;
+                }
                 utterance.lang = 'zh-TW'; 
                 utterance.rate = 1.0;
                 utterance.volume = 1.0;
@@ -457,7 +535,6 @@
             mainBody.className = "min-h-screen flex items-center justify-center p-4 transition-colors duration-500 ";
             progressBar.className = "h-full w-full transition-all duration-1000 ease-linear origin-left ";
 
-            // Helper to show/hide name
             const showName = (text, colorClass) => {
                 exerciseNameDisplay.textContent = text;
                 exerciseNameDisplay.className = `text-xl md:text-3xl font-bold ${colorClass} tracking-wide transition-opacity duration-500`;
@@ -515,12 +592,11 @@
                 const nextName = getExerciseName(totalSets + 1);
                 if (nextName) {
                     showName("下一組: " + nextName, "text-slate-300");
-                    // Speak "休息", wait 0.5s, then speak next set
                     speak("休息", () => {
-                        if (!isRunning) return; // Prevent speaking if paused
+                        if (!isRunning) return; 
                         ttsTimeout = setTimeout(() => {
                             speak("下一組：" + nextName);
-                        }, 500);
+                        }, 500); // 0.5s pause
                     });
                 } else {
                     hideName();
@@ -564,8 +640,7 @@
             totalTimeDisplay.textContent = formatTime(totalSeconds);
 
             if (currentTime === 1) {
-                // If TTS is NOT enabled, play the long beep sound.
-                // If TTS IS enabled, we do nothing here, because setMode() calls speak().
+                // If TTS is disabled, play beep. If TTS enabled, stay silent (speak() handles it in setMode)
                 if (!settings.ttsEnabled) {
                     playTone('end');
                 }
@@ -685,6 +760,11 @@
             settings.soundEnabled = !settings.soundEnabled;
             updateMuteIcon();
             saveSettings(); 
+        });
+
+        // Test Voice Button
+        testVoiceBtn.addEventListener('click', () => {
+             doSpeak("這是一段語音測試，如果您聽得到聲音，表示設定正常。");
         });
 
         // Settings Modal
