@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OnimaiOnline</title>
+    <link rel="icon" href="images/brother.png" type="image/png">
+       <style>
+        /* 確保 Padding 不會增加元件的總寬度，這對 Grid 計算很重要 */
+        * {
+            box-sizing: border-box;
+        }
+
+        /* 基礎設定 */
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f4f7f6; /* 淡灰色背景，比較不刺眼 */
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px; /* 限制最大寬度，避免在大螢幕太分散 */
+            width: 100%;
+            background-color: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); /* 輕微陰影增加立體感 */
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .image {
+            max-width: 100%; /* 確保圖片縮放不破版 */
+            height: auto;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            object-fit: contain; /* 保持圖片比例 */
+        }
+
+        /* --- 重點：Grid 佈局設定 --- */
+        .button-group {
+            display: grid;
+            /* 修改說明：
+               將 minmax 的最小值改成 170px。
+               計算邏輯：容器約 720px 可用空間 / 170px = 4.2。
+               這樣一排最多只能塞下 4 個按鈕，第 5 個會自動換行。
+            */
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px; /* 按鈕之間的間距 */
+            width: 100%;
+        }
+
+        /* --- 按鈕樣式美化 --- */
+        .button {
+            display: flex;
+            flex-direction: column; /* 如果有圖示，可以變成垂直排列 */
+            justify-content: center;
+            align-items: center;
+            padding: 15px 10px;
+            background-color: #eef2f5;
+            color: #444;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            border: 2px solid transparent; /* 預留邊框位置 */
+            min-height: 60px; /* 確保按鈕有基本高度 */
+        }
+
+        /* 滑鼠懸停效果 (只對一般 button 有效，other-button 會在下面覆蓋) */
+        .button:not(.other-button):hover {
+            background-color: #fff;
+            border-color: #6c5ce7; /* 懸浮時變色 */
+            color: #6c5ce7;
+            transform: translateY(-3px); /* 微微上浮 */
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+
+        /* 針對不同功能的顏色區分 (可選) */
+        /* 為前幾個主要功能加一點強調色 */
+        .button:nth-child(-n+6) {
+            background-color: #e0e7ff;
+            color: #4338ca;
+        }
+        .button:nth-child(-n+6):hover {
+            background-color: #4338ca;
+            color: white;
+        }
+
+        /* --- 建設中按鈕 (other-button) 樣式 --- */
+        .button.other-button {
+            background-color: #f9f9f9;
+            color: #999; /* 灰色文字 */
+            border: 2px dashed #ccc; /* 虛線邊框 */
+            /* cursor: not-allowed; 移除禁止符號，讓它感覺可以互動 */
+        }
+
+        /* 建設中按鈕 - 灰色系的懸停效果 */
+        .button.other-button:hover {
+            background-color: #fff;
+            border-color: #999; /* 邊框變深灰 */
+            color: #666; /* 文字變深灰 */
+            transform: translateY(-3px); /* 恢復上浮效果 */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* 恢復陰影，但用黑色/灰色系 */
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Onimai Online</h1>
+        <img class="image" src="images/Mahiro.png" alt="Oyama Mahiro" style="width: 280px; height: auto;">
+        <div class="button-group">
+            <a href="app/ContractProfitandLoss/index.html" class="button">合約盈虧預估</a>
+            <a href="app/ToDoList/index.html" class="button">待辦清單</a>
+            <a href="app/Bingo/index.html" class="button">賓果遊戲</a>
+            <a href="app/Card/index.html" class="button">字卡及跑馬燈</a>
+            <a href="app/Countdown/index.html" class="button">倒數計時器</a>
+            <a href="app/ExerciseTimer/index.html" class="button">運動計時器</a>
+            <a href="#" class="button other-button">建設中</a>
+            <a href="#" class="button other-button">建設中</a>
+            <a href="#" class="button other-button">建設中</a>
+            <a href="#" class="button other-button">建設中</a>
+            <a href="#" class="button other-button">建設中</a>
+            <a href="#" class="button other-button">建設中</a>
+            </div>
+    </div>
+</body>
+</html>

@@ -732,7 +732,7 @@
                                 </div>
                                 {isTaskMode && <div className="mt-4 flex gap-2"><select value={activeListId} onChange={e=>setActiveListId(e.target.value)} className="flex-1 p-2 border rounded"><option disabled value="">選擇列表</option>{taskLists.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select><button onClick={()=>setView('manage-lists')} className="p-2 bg-slate-200 rounded"><LayoutList/></button></div>}
                             </div>
-                            <div className="flex gap-2"><button onClick={initializeGame} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">開始遊戲</button><a href="../../index.html" className="flex-1 py-3 flex justify-center items-center bg-slate-100 font-bold rounded-xl text-slate-600">回首頁</a></div>
+                            <div className="flex gap-2"><button onClick={initializeGame} className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg">開始遊戲</button></div>
                         </div>
                     )}
 
