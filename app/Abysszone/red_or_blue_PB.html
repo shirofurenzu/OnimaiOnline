@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大型機台抽籤系統</title>
+<style>
+  body {
+    background-color: #222;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    color: white;
+  }
+
+  /* --- 1. 顯示螢幕 (Result Screen) --- */
+  .screen-container {
+    background: #000;
+    border: 4px solid #555;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.8);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  /* 中大獎時的閃爍動畫 */
+  @keyframes jackpot-flash {
+    0% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+    15% { border-color: #ff7f00; box-shadow: 0 0 30px #ff7f00; }
+    30% { border-color: #ffff00; box-shadow: 0 0 30px #ffff00; }
+    45% { border-color: #00ff00; box-shadow: 0 0 30px #00ff00; }
+    60% { border-color: #0000ff; box-shadow: 0 0 30px #0000ff; }
+    75% { border-color: #4b0082; box-shadow: 0 0 30px #4b0082; }
+    90% { border-color: #9400d3; box-shadow: 0 0 30px #9400d3; }
+    100% { border-color: #ff0000; box-shadow: 0 0 30px #ff0000; }
+  }
+
+  .jackpot-mode {
+    animation: jackpot-flash 0.1s linear infinite; /* 極速閃爍 */
+    background: #222;
+  }
+
+  .screen-text {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 32px;
+    font-weight: bold;
+    color: #33ff00;
+    text-shadow: 0 0 10px rgba(51, 255, 0, 0.7);
+    min-height: 40px;
+    line-height: 40px;
+    white-space: nowrap;
+    transition: transform 0.2s;
+  }
+
+  /* 中大獎時文字放大 */
+  .text-boom {
+    transform: scale(1.5);
+    color: #fff !important;
+    text-shadow: 0 0 20px #fff, 0 0 40px #ff00de !important;
+  }
+
+  .screen-container::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 50%;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+    pointer-events: none;
+  }
+
+  /* --- 2. 控制台 (Console Panel) --- */
+  .console-panel {
+    background: #333;
+    padding: 40px 60px;
+    border-radius: 20px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+    display: flex;
+    gap: 40px;
+    border: 2px solid #555;
+    margin-bottom: 30px;
+    position: relative;
+  }
+  
+  /* 鍵盤提示文字 (僅電腦版顯示) */
+  .keyboard-hint {
+    position: absolute;
+    bottom: 5px;
+    width: 100%;
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+    left: 0;
+  }
+
+  /* --- 按鈕通用樣式 --- */
+  .arcade-btn {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: none;
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    user-select: none;
+    transition: transform 0.1s ease; /* 只對位移做過渡 */
+    border: 4px solid rgba(0,0,0,0.2); 
+  }
+  
+  /* 透過 class 控制按下的狀態 (為了支援鍵盤操作) */
+  .arcade-btn.active {
+    transform: translateY(8px);
+  }
+
+  /* 紅色按鈕 */
+  .btn-red {
+    background: radial-gradient(circle at 30% 30%, #ff7675, #d63031);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #b71540,
+      0 15px 20px rgba(0,0,0,0.4);
+  }
+  .btn-red.active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #b71540, 0 5px 5px rgba(0,0,0,0.4);
+  }
+
+  /* 藍色按鈕 */
+  .btn-blue {
+    background: radial-gradient(circle at 30% 30%, #74b9ff, #0984e3);
+    box-shadow: 
+      inset 0 5px 10px rgba(255,255,255,0.4),
+      0 8px 0 #185adb, 
+      0 15px 20px rgba(0,0,0,0.4);
+  }
+  .btn-blue.active {
+    box-shadow: inset 0 5px 10px rgba(255,255,255,0.4), 0 0 0 #185adb, 0 5px 5px rgba(0,0,0,0.4);
+  }
+
+  /* --- 3. 輸入設定區域 --- */
+  .input-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 300px;
+  }
+
+  .input-label {
+    font-size: 14px;
+    color: #aaa;
+  }
+
+  textarea {
+    width: 100%;
+    height: 80px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 8px;
+    color: white;
+    padding: 10px;
+    font-size: 14px;
+    resize: none;
+  }
+  
+  textarea:focus {
+    outline: 2px solid #007bff;
+  }
+
+</style>
+</head>
+<body>
+
+<!-- 顯示螢幕 -->
+<div class="screen-container" id="screen-box">
+  <div class="screen-text" id="result-text">READY</div>
+</div>
+
+<!-- 控制台 -->
+<div class="console-panel">
+  <!-- id 用於 JS 控制 -->
+  <button id="btn-red" class="arcade-btn btn-red"></button>
+  <button id="btn-blue" class="arcade-btn btn-blue"></button>
+  <div class="keyboard-hint">電腦版可用左右方向鍵操作</div>
+</div>
+
+<!-- 輸入選項 -->
+<div class="input-area">
+  <label class="input-label">抽籤選項</label>
+  <textarea id="options-input">
+被當小公主寵愛
+被當小婊子爆草</textarea>
+</div>
+
+<script>
+  // 狀態變數
+  let intervalId = null;
+  const screenText = document.getElementById('result-text');
+  const screenBox = document.getElementById('screen-box');
+  const inputField = document.getElementById('options-input');
+  
+  const btnRed = document.getElementById('btn-red');
+  const btnBlue = document.getElementById('btn-blue');
+
+  // 追蹤按鈕按壓狀態
+  let isRedPressed = false;
+  let isBluePressed = false;
+
+  // --- 核心抽籤邏輯 ---
+  function startLottery(mode = 'normal') {
+    // 1. 取得選項
+    const rawText = inputField.value;
+    let options = rawText.split(/[\n,，]+/).map(item => item.trim()).filter(item => item !== '');
+
+    if (options.length === 0) {
+      screenText.innerText = "沒有選項!";
+      screenText.style.color = "red";
+      return;
+    }
+
+    // 清除舊的動畫或計時器
+    if (intervalId) clearInterval(intervalId);
+    screenText.classList.remove('text-boom');
+    
+    // 設定模式外觀
+    if (mode === 'jackpot') {
+      screenBox.classList.add('jackpot-mode');
+      screenText.style.color = "#ff00de"; // 紫紅色文字
+    } else {
+      screenBox.classList.remove('jackpot-mode');
+      screenText.style.color = "#33ff00"; // 一般綠色
+    }
+
+    // 2. 跑馬燈動畫
+    let counter = 0;
+    // Jackpot 模式跑比較快
+    const speed = mode === 'jackpot' ? 40 : 80;
+    
+    intervalId = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * options.length);
+      screenText.innerText = options[randomIndex];
+      counter++;
+
+      // 跑個 25 次後停下
+      if (counter > 25) {
+        clearInterval(intervalId);
+        intervalId = null;
+        showFinalResult(options, mode);
+      }
+    }, speed); 
+  }
+
+  function showFinalResult(options, mode) {
+    const finalIndex = Math.floor(Math.random() * options.length);
+    screenText.innerText = options[finalIndex];
+    
+    if (mode === 'jackpot') {
+      // 中大獎特效：文字放大 + 螢幕持續閃爍幾秒後停止
+      screenText.classList.add('text-boom');
+      setTimeout(() => {
+        screenBox.classList.remove('jackpot-mode');
+        screenText.classList.remove('text-boom');
+        screenText.style.color = "#33ff00"; // 回復正常
+      }, 3000);
+    } else {
+      // 一般閃爍
+      screenText.style.color = "#fff";
+      setTimeout(() => {
+        screenText.style.color = "#33ff00";
+      }, 200);
+    }
+  }
+
+  // --- 按鈕事件處理 (支援滑鼠、觸控、鍵盤) ---
+
+  function checkButtons() {
+    if (isRedPressed && isBluePressed) {
+      startLottery('jackpot');
+    } else if (isRedPressed || isBluePressed) {
+      // 只有當尚未開始跑的時候才啟動一般模式，避免 Jackpot 被蓋掉
+      // 但如果已經在跑 'normal'，這裡重複觸發沒關係，可以重置
+      // 如果已經在跑 'jackpot'，則忽略單按鍵
+      if (!screenBox.classList.contains('jackpot-mode')) {
+         startLottery('normal');
+      }
+    }
+  }
+
+  function setBtnState(color, pressed) {
+    const btn = color === 'red' ? btnRed : btnBlue;
+    
+    // 視覺上下壓效果
+    if (pressed) btn.classList.add('active');
+    else btn.classList.remove('active');
+
+    // 更新狀態
+    if (color === 'red') isRedPressed = pressed;
+    if (color === 'blue') isBluePressed = pressed;
+
+    // 如果是按下動作，檢查是否觸發抽籤
+    if (pressed) checkButtons();
+  }
+
+  // 1. 滑鼠/觸控事件綁定 helper
+  function bindEvents(btn, color) {
+    const start = (e) => { 
+      e.preventDefault(); // 防止手機長按選取文字
+      setBtnState(color, true); 
+    };
+    const end = (e) => { 
+      e.preventDefault();
+      setBtnState(color, false); 
+    };
+
+    btn.addEventListener('mousedown', start);
+    btn.addEventListener('touchstart', start);
+
+    btn.addEventListener('mouseup', end);
+    btn.addEventListener('mouseleave', end);
+    btn.addEventListener('touchend', end);
+  }
+
+  bindEvents(btnRed, 'red');
+  bindEvents(btnBlue, 'blue');
+
+  // 2. 鍵盤事件綁定 (方便電腦測試：左=紅, 右=藍)
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return; // 防止長按連發
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setBtnState('red', true);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setBtnState('blue', true);
+  });
+
+  document.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') setBtnState('red', false);
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') setBtnState('blue', false);
+  });
+
+</script>
+
+</body>
+</html>
+
+
+
