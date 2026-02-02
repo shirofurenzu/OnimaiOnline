@@ -124,13 +124,36 @@
             <a href="app/Card/index.html" class="button">字卡及跑馬燈</a>
             <a href="app/Countdown/index.html" class="button">倒數計時器</a>
             <a href="app/ExerciseTimer/index.html" class="button">運動計時器</a>
-            <a href="#" class="button other-button">建設中</a>
-            <a href="#" class="button other-button">建設中</a>
-            <a href="#" class="button other-button">建設中</a>
-            <a href="#" class="button other-button">建設中</a>
-            <a href="#" class="button other-button">建設中</a>
-            <a href="#" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="javascript:void(0)" class="button other-button" onclick="unlockSecret()">建設中</a>
             </div>
     </div>
 </body>
+<script>
+    // 設定一個計數器
+    let clickCount = 0;
+    let timer; // 用來重置的計時器 (選用)
+
+    function unlockSecret() {
+        clickCount++; // 每次點擊就 +1
+        
+        console.log("目前點擊次數：" + clickCount); // (測試用，可以拿掉)
+
+        if (clickCount >= 5) {
+            // 如果滿 5 次，就跳轉到真的首頁
+            window.location.href = 'app/Test03/index.html';
+        }
+
+        // --- 進階功能 (可選)：防止誤觸 ---
+        // 如果超過 1 秒沒繼續點，就把次數歸零 (避免訪客無意間累積到 5 次)
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+            clickCount = 0;
+        }, 1000);
+    }
+</script>
 </html>
