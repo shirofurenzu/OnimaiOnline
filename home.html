@@ -14,7 +14,7 @@
         /* 基礎設定 */
         body {
             font-family: "Microsoft JhengHei", Arial, sans-serif;
-            background-color: #f4f7f6; /* 淡灰色背景，比較不刺眼 */
+            background-color: #777; 
             margin: 0;
             padding: 20px;
             display: flex;
@@ -24,7 +24,7 @@
         .container {
             max-width: 800px; /* 限制最大寬度，避免在大螢幕太分散 */
             width: 100%;
-            background-color: white;
+            background-color: #f4f7f6;/* 淡灰色背景，比較不刺眼 */
             padding: 40px;
             border-radius: 20px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.05); /* 輕微陰影增加立體感 */
@@ -111,12 +111,17 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* 恢復陰影，但用黑色/灰色系 */
         }
 
+       /* 點擊圖片時稍微縮小，增加回饋感 */
+        .image:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Onimai Online</h1>
-        <img class="image" src="images/Mahiro.png" alt="Oyama Mahiro" style="width: 280px; height: auto;">
+        <img class="image" src="images/Mahiro.png" alt="Oyama Mahiro" style="width: 280px; height: auto;"
+        onclick="toggleImage(this)">
         <div class="button-group">
             <a href="app/ContractProfitandLoss/index.html" class="button">合約盈虧預估</a>
             <a href="app/ToDoList/index.html" class="button">待辦清單</a>
@@ -129,31 +134,44 @@
             <a href="javascript:void(0)" class="button other-button">建設中</a>
             <a href="javascript:void(0)" class="button other-button">建設中</a>
             <a href="javascript:void(0)" class="button other-button">建設中</a>
-            <a href="javascript:void(0)" class="button other-button" onclick="unlockSecret()">建設中</a>
+            <a href="javascript:void(0)" class="button other-button" onclick="unlockSecret(this, 'app/Test03/index.html')"> 建設中</a>
             </div>
     </div>
 </body>
+
 <script>
-    // 設定一個計數器
-    let clickCount = 0;
-    let timer; // 用來重置的計時器 (選用)
+function unlockSecret(element, targetUrl, requiredClicks = 5) {
+    // 如果滿 5 次，就跳轉到...
+    if (!element.clickCount) element.clickCount = 0;
 
-    function unlockSecret() {
-        clickCount++; // 每次點擊就 +1
-        
-        console.log("目前點擊次數：" + clickCount); // (測試用，可以拿掉)
+    element.clickCount++;
+    console.log("目前點擊數：" + element.clickCount);
 
-        if (clickCount >= 5) {
-            // 如果滿 5 次，就跳轉到真的首頁
-            window.location.href = 'app/Test03/index.html';
+    if (element.clickCount >= requiredClicks) {
+        window.location.href = targetUrl;
+        element.clickCount = 0;
+        return;
+    }
+
+    if (element.resetTimer) clearTimeout(element.resetTimer);
+
+    element.resetTimer = setTimeout(() => {
+        element.clickCount = 0;
+        console.log("歸零");
+    }, 1000);
+}
+
+function toggleImage(imgElement) {
+            // 檢查目前的 src 是否包含 'Mahiro.png'
+            // 使用 includes 是為了避免網址前面有 http://localhost... 等路徑干擾判斷
+            if (imgElement.src.includes('Mahiro.png')) {
+                // 如果是原圖，就換成第二張
+                imgElement.src = 'images/brother.png';
+            } else {
+                // 否則換回原圖
+                imgElement.src = 'images/Mahiro.png';
+            }
         }
 
-        // --- 進階功能 (可選)：防止誤觸 ---
-        // 如果超過 1 秒沒繼續點，就把次數歸零 (避免訪客無意間累積到 5 次)
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-            clickCount = 0;
-        }, 1000);
-    }
 </script>
 </html>

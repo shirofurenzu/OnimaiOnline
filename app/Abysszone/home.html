@@ -73,10 +73,34 @@
         <div class="button-group">
             <a href="red_or_blue_PB.html" class="button">紅藍按鈕</a>
             <a href="bingoh.html" class="button">賓果遊戲</a>
+            <a href="javascript:void(0)" class="button other-button" onclick="unlockSecret(this, 'index.html')"> 建設中</a>
             <!--
             <a href="#" class="button other-button">按鈕一</a>
             -->
             </div>
     </div>
 </body>
+
+<script>
+function unlockSecret(element, targetUrl, requiredClicks = 5) {
+    if (!element.clickCount) element.clickCount = 0;
+
+    element.clickCount++;
+    console.log("目前點擊數：" + element.clickCount);
+
+    if (element.clickCount >= requiredClicks) {
+        window.location.href = targetUrl;
+        element.clickCount = 0;
+        return;
+    }
+
+    if (element.resetTimer) clearTimeout(element.resetTimer);
+
+    element.resetTimer = setTimeout(() => {
+        element.clickCount = 0;
+        console.log("歸零");
+    }, 1000);
+}
+</script>
+
 </html>
