@@ -64,8 +64,8 @@
             justify-content: center;
             align-items: center;
             padding: 15px 10px;
-            background-color: #eef2f5;
-            color: #444;
+            background-color: #e0e7ff;
+            color: #4338ca;
             text-decoration: none;
             border-radius: 12px;
             font-weight: bold;
@@ -76,23 +76,14 @@
 
         /* 滑鼠懸停效果 (只對一般 button 有效，other-button 會在下面覆蓋) */
         .button:not(.other-button):hover {
-            background-color: #fff;
+            background-color: #4338ca;
             border-color: #6c5ce7; /* 懸浮時變色 */
-            color: #6c5ce7;
+            color: #fff;
             transform: translateY(-3px); /* 微微上浮 */
             box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
         }
 
-        /* 針對不同功能的顏色區分 (可選) */
-        /* 為前幾個主要功能加一點強調色 */
-        .button:nth-child(-n+6) {
-            background-color: #e0e7ff;
-            color: #4338ca;
-        }
-        .button:nth-child(-n+6):hover {
-            background-color: #4338ca;
-            color: white;
-        }
+        
 
         /* --- 建設中按鈕 (other-button) 樣式 --- */
         .button.other-button {
@@ -129,7 +120,7 @@
             <a href="app/Card/index.html" class="button">字卡及跑馬燈</a>
             <a href="app/Countdown/index.html" class="button">倒數計時器</a>
             <a href="app/ExerciseTimer/index.html" class="button">運動計時器</a>
-            <a href="javascript:void(0)" class="button other-button">建設中</a>
+            <a href="app/AiPromptGenerator/index.html" class="button">Ai咒語產生器</a>
             <a href="javascript:void(0)" class="button other-button">建設中</a>
             <a href="javascript:void(0)" class="button other-button">建設中</a>
             <a href="javascript:void(0)" class="button other-button">建設中</a>
