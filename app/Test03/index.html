@@ -1,69 +1,683 @@
 <!DOCTYPE html>
-<html lang="zh-Hant-TW">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>簡單 HTML 示範</title>
-    
+    <title>隨機倒數計時器</title>
     <style>
+        :root {
+            --primary-color: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary-color: #8b5cf6;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-color: #1f2937;
+            --error-color: #ef4444;
+            --border-color: #e5e7eb;
+            --block-bg: #f8fafc;
+        }
+
         body {
-            font-family: "Microsoft JhengHei", sans-serif; /* 設定字體 */
-            background-color: #f0f2f5;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        .card {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+        .main-title {
+            font-size: 2.5rem;
+            color: #4b5563;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            font-weight: 800;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.05);
             text-align: center;
-            max-width: 300px;
         }
-        h1 {
-            color: #333;
-            font-size: 1.5rem;
+
+        .container {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            height: 600px; 
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+            position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
         }
-        button {
-            background-color: #007bff;
+
+        #setupView {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .mode-content {
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            overflow-y: auto;
+        }
+
+        .content-center-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .mode-content .btn {
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+
+        h3 { 
+            margin: 0 0 0.5rem 0; 
+            font-size: 1.1rem; 
+            color: #4b5563; 
+            font-weight: 600; 
+        }
+
+        .tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        .tab-btn.active {
+            background: white;
+            color: var(--primary-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .tab-btn.active[data-mode="random"] {
+            color: var(--secondary-color);
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .input-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .input-wrapper input {
+            width: 60px;
+            padding: 8px;
+            font-size: 1.4rem;
+            text-align: center;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: white;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .input-wrapper input:focus { 
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .input-wrapper label { font-size: 0.85rem; color: #6b7280; margin-top: 4px; font-weight: 500; }
+        
+        .range-block {
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.2rem;
+            margin-bottom: 10px;
+            background: var(--block-bg);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .instruction-text {
+            color: #92400e;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            line-height: 1.4;
+            background: #fffbeb;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid #fcd34d;
+            flex-shrink: 0;
+            text-align: center;
+        }
+
+        /* 倒數顯示樣式 */
+        .timer-display {
+            /* [修改] 設定最小高度，確保 1行/2行 切換時外框大小不變 */
+            min-height: 200px; 
+            
+            font-size: 4rem; 
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+            color: var(--primary-color);
+            margin: auto 0;
+            line-height: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s;
+        }
+        
+        .timer-display:active {
+            transform: scale(0.98);
+        }
+
+        /* 日期模式下的兩行樣式 */
+        .date-line {
+            font-size: 1.8rem;
+            color: #6b7280;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .time-line {
+            font-size: 3.5rem;
+            font-weight: 800;
+        }
+        
+        #timerView {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+            padding: 14px 24px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
             cursor: pointer;
+            transition: all 0.2s;
+            margin: 0 auto;
+            width: 100%;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+        }
+        .btn:hover { 
+            background-color: var(--primary-dark); 
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.5);
+        }
+        .btn:active { transform: translateY(0); }
+        
+        .btn-random { 
+            background-color: var(--secondary-color);
+            box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.4);
+        }
+        .btn-random:hover { 
+            background-color: #7c3aed; 
+            box-shadow: 0 6px 8px -1px rgba(139, 92, 246, 0.5);
+        }
+
+        .btn-secondary { 
+            background-color: #9ca3af; 
+            box-shadow: none;
+        }
+        .btn-secondary:hover { background-color: #6b7280; box-shadow: none; }
+        
+        .btn-outline {
+            background-color: transparent;
+            border: 2px solid var(--primary-color);
+            color: var(--primary-color);
+            box-shadow: none;
+        }
+        .btn-outline:hover { 
+            background-color: #eff6ff; 
+            transform: translateY(-1px);
+        }
+
+        .share-section {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            padding-bottom: 0;
+        }
+        
+        .share-section .btn + .btn {
+            margin-top: 15px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
             font-size: 1rem;
-            margin-top: 15px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            z-index: 100;
         }
-        button:hover {
-            background-color: #0056b3;
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(-10px); }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
         }
-        #message {
-            margin-top: 15px;
-            color: #555;
-            font-weight: bold;
+        
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1.5rem;
+            max-width: 360px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: scale(0.95);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-desc {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            margin: 0;
+            box-shadow: none;
+        }
+
+        .btn-modal-cancel {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+        .btn-modal-cancel:hover { background: #e5e7eb; }
+
+        .btn-modal-confirm {
+            background: var(--error-color);
+            color: white;
+        }
+        .btn-modal-confirm:hover { background: #dc2626; }
+
+
+        @media (max-width: 480px) {
+            .timer-display { font-size: 2.8rem; min-height: 150px; /* 手機版高度微調 */ }
+            .date-line { font-size: 1.4rem; }
+            .time-line { font-size: 2.5rem; }
+            .container { padding: 1.5rem; height: auto; min-height: 600px; }
+            .main-title { font-size: 2rem; margin-bottom: 1.5rem; }
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h1>你好，這是一個卡片</h1>
-        <p>這段文字是用來展示基本的 HTML 段落結構。</p>
-        
-        <button onclick="showMessage()">點擊這裡</button>
-        
-        <p id="message"></p>
+    <h1 class="main-title">倒數計時器</h1>
+
+    <div class="container">
+        <!-- 設定模式 (Setup View) -->
+        <div id="setupView">
+            
+            <div class="tabs">
+                <button class="tab-btn active" data-mode="fixed" onclick="switchMode('fixed')">一般倒數</button>
+                <button class="tab-btn" data-mode="random" onclick="switchMode('random')">隨機倒數</button>
+            </div>
+
+            <div id="fixedModeInputs" class="mode-content">
+                <div class="content-center-wrapper">
+                    <div class="range-block">
+                        <h3>設定倒數時間</h3>
+                        <div class="input-group">
+                            <div class="input-wrapper"><input type="number" id="fixDays" min="0" value="0" placeholder="0"><label>天</label></div>
+                            <div class="input-wrapper"><input type="number" id="fixHours" min="0" max="23" value="0" placeholder="0"><label>時</label></div>
+                            <div class="input-wrapper"><input type="number" id="fixMinutes" min="0" max="59" value="0" placeholder="0"><label>分</label></div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn" onclick="startSetup()">開始倒數</button>
+            </div>
+
+            <div id="randomModeInputs" class="mode-content" style="display: none;">
+                <p class="instruction-text">
+                    💡 設定最短與最長的時間範圍，<br>
+                    系統將從中隨機選取一個時間！
+                </p>
+
+                <div class="content-center-wrapper">
+                    <div class="range-block">
+                        <h3>最短時間 (Min)</h3>
+                        <div class="input-group">
+                            <div class="input-wrapper"><input type="number" id="minDays" min="0" value="0"><label>天</label></div>
+                            <div class="input-wrapper"><input type="number" id="minHours" min="0" max="23" value="0"><label>時</label></div>
+                            <div class="input-wrapper"><input type="number" id="minMinutes" min="0" max="59" value="0"><label>分</label></div>
+                        </div>
+                    </div>
+
+                    <div class="range-block">
+                        <h3>最長時間 (Max)</h3>
+                        <div class="input-group">
+                            <div class="input-wrapper"><input type="number" id="maxDays" min="0" value="0"><label>天</label></div>
+                            <div class="input-wrapper"><input type="number" id="maxHours" min="0" max="23" value="0"><label>時</label></div>
+                            <div class="input-wrapper"><input type="number" id="maxMinutes" min="0" max="59" value="0"><label>分</label></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-random" onclick="startSetup()">🎲 生成隨機時間並倒數</button>
+            </div>
+        </div>
+
+        <!-- 倒數模式 (Timer View) -->
+        <div id="timerView" style="display: none;">
+            <!-- [修改] 移除切換提示 -->
+            <div id="statusText" style="margin-top: 20px; font-size: 1.1rem; color: #9ca3af;">距離結束還有</div>
+            
+            <!-- 加入 onclick 事件 -->
+            <div class="timer-display" id="timerDisplay" onclick="toggleDisplayMode()">00:00:00</div>
+            
+            <div class="share-section" id="shareSection">
+                <p style="margin-bottom: 10px; font-size: 0.95rem; color: #666;">
+                    複製連結分享給朋友，時間將會同步：
+                </p>
+                <button class="btn btn-outline" onclick="copyLink()">🔗 複製分享連結</button>
+                <button class="btn btn-secondary" onclick="resetTimer()">❌ 重置/結束</button>
+            </div>
+        </div>
     </div>
 
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-title">確定要結束倒數嗎？</div>
+            <div class="modal-desc">目前的倒數將會停止並重置，確定要繼續？</div>
+            <div class="modal-buttons">
+                <button class="btn-modal btn-modal-cancel" onclick="closeModal()">取消</button>
+                <button class="btn-modal btn-modal-confirm" onclick="confirmReset()">確定結束</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">連結已複製！</div>
+
     <script>
-        function showMessage() {
-            const msgElement = document.getElementById('message');
-            msgElement.innerText = "互動成功！今天的日期是：" + new Date().toLocaleDateString();
+        let intervalId;
+        let currentMode = 'fixed';
+        let isFinished = false;
+        let isDateMode = false;
+        let currentEndTime = 0;
+
+        const setupView = document.getElementById('setupView');
+        const timerView = document.getElementById('timerView');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const statusText = document.getElementById('statusText');
+        const shareSection = document.getElementById('shareSection');
+        const toast = document.getElementById('toast');
+        const confirmModal = document.getElementById('confirmModal');
+
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            const endTime = params.get('end');
+            if (endTime) {
+                runTimer(parseInt(endTime));
+            } else {
+                showSetup();
+            }
+        });
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if(btn.dataset.mode === mode) btn.classList.add('active');
+            });
+
+            if (mode === 'fixed') {
+                document.getElementById('fixedModeInputs').style.display = 'flex';
+                document.getElementById('randomModeInputs').style.display = 'none';
+                timerDisplay.style.color = 'var(--primary-color)';
+            } else {
+                document.getElementById('fixedModeInputs').style.display = 'none';
+                document.getElementById('randomModeInputs').style.display = 'flex';
+                timerDisplay.style.color = 'var(--secondary-color)';
+            }
+        }
+
+        function startSetup() {
+            let totalMs = 0;
+
+            if (currentMode === 'fixed') {
+                const d = parseInt(document.getElementById('fixDays').value) || 0;
+                const h = parseInt(document.getElementById('fixHours').value) || 0;
+                const m = parseInt(document.getElementById('fixMinutes').value) || 0;
+                
+                if (d===0 && h===0 && m===0) return alert("請輸入時間！");
+                totalMs = toMs(d, h, m);
+
+            } else {
+                const minD = parseInt(document.getElementById('minDays').value) || 0;
+                const minH = parseInt(document.getElementById('minHours').value) || 0;
+                const minM = parseInt(document.getElementById('minMinutes').value) || 0;
+                
+                const maxD = parseInt(document.getElementById('maxDays').value) || 0;
+                const maxH = parseInt(document.getElementById('maxHours').value) || 0;
+                const maxM = parseInt(document.getElementById('maxMinutes').value) || 0;
+
+                const minMs = toMs(minD, minH, minM);
+                const maxMs = toMs(maxD, maxH, maxM);
+
+                if (maxMs <= 0 && minMs <= 0) return alert("請至少輸入一點時間！");
+                
+                let finalMin = Math.min(minMs, maxMs);
+                let finalMax = Math.max(minMs, maxMs);
+
+                totalMs = Math.floor(Math.random() * (finalMax - finalMin + 1)) + finalMin;
+            }
+
+            const now = new Date().getTime();
+            const targetTime = now + totalMs;
+
+            try {
+                const newUrl = `${window.location.pathname}?end=${targetTime}`;
+                window.history.pushState({path: newUrl}, '', newUrl);
+            } catch (e) {
+                console.warn("Local testing: URL pushState blocked.");
+            }
+
+            runTimer(targetTime);
+        }
+
+        function toMs(d, h, m) {
+            return ((d * 24 * 60 * 60) + (h * 60 * 60) + (m * 60)) * 1000;
+        }
+
+        function runTimer(endTime) {
+            currentEndTime = endTime;
+            isFinished = false;
+            isDateMode = false;
+            
+            setupView.style.display = 'none';
+            timerView.style.display = 'flex'; 
+            
+            updateDisplay();
+            if (intervalId) clearInterval(intervalId);
+            intervalId = setInterval(updateDisplay, 1000);
+        }
+
+        function toggleDisplayMode() {
+            isDateMode = !isDateMode;
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            const now = new Date().getTime();
+            const distance = currentEndTime - now;
+
+            if (distance < 0) {
+                clearInterval(intervalId);
+                isFinished = true;
+                timerDisplay.textContent = "時間到！";
+                statusText.textContent = "🎉 倒數結束";
+                timerDisplay.style.color = "#ef4444";
+                timerDisplay.style.cursor = "default";
+                timerDisplay.onclick = null;
+                return;
+            }
+
+            if (isDateMode) {
+                // 日期模式
+                // [修改] 移除切換提示
+                statusText.textContent = "預計結束時間";
+                
+                const dateObj = new Date(currentEndTime);
+                const datePart = dateObj.toLocaleDateString('zh-TW', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const timePart = dateObj.toLocaleTimeString('zh-TW', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                
+                timerDisplay.innerHTML = `<div class="date-line">${datePart}</div><div class="time-line">${timePart}</div>`;
+
+            } else {
+                // 倒數模式
+                // [修改] 移除切換提示
+                statusText.textContent = "距離結束還有";
+
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                let timeString = "";
+                if (days > 0) timeString += `${days}天 `;
+                timeString += `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+
+                timerDisplay.textContent = timeString;
+                document.title = timeString + " - 倒數中";
+            }
+        }
+
+        function pad(num) {
+            return num.toString().padStart(2, '0');
+        }
+
+        function resetTimer() {
+            if (isFinished) {
+                confirmReset();
+            } else {
+                confirmModal.classList.add('show');
+            }
+        }
+
+        function closeModal() {
+            confirmModal.classList.remove('show');
+        }
+
+        function confirmReset() {
+            closeModal();
+            clearInterval(intervalId);
+            try {
+                window.history.pushState({}, '', window.location.pathname);
+            } catch (e) {}
+            
+            document.title = "同步倒數計時器";
+            statusText.textContent = "距離結束還有";
+            
+            timerDisplay.style.color = currentMode === 'random' ? 'var(--secondary-color)' : 'var(--primary-color)';
+            
+            // 恢復點擊事件
+            timerDisplay.onclick = toggleDisplayMode;
+            timerDisplay.style.cursor = "pointer";
+
+            showSetup();
+        }
+
+        function showSetup() {
+            setupView.style.display = 'flex';
+            timerView.style.display = 'none';
+            switchMode(currentMode);
+        }
+
+        function copyLink() {
+            if (!navigator.clipboard) return alert("請手動複製網址列。");
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }).catch(() => alert('複製失敗，請手動複製'));
         }
     </script>
-
 </body>
 </html>
