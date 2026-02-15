@@ -85,3 +85,7 @@
 2026/2/14
 [1.9.0]
 新增AiPromptGenerator
+
+2026/2/15
+[1.9.1]
+添加AiPromptGenerator的icon
